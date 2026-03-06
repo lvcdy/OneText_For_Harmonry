@@ -1,6 +1,7 @@
 /**
  * 桌面小组件卡片 - 替代 Android WidgetProvider + widget_layout.xml
  * 显示一言文字和作者
+ * HarmonyOS 6: 支持卡片刷新事件和 formId 持久化
  */
 
 const localStorage = new LocalStorage();

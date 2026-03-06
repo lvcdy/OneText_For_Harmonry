@@ -1,4 +1,3 @@
-import { router } from '@kit.ArkUI';
 import { common } from '@kit.AbilityKit';
 import { pasteboard } from '@kit.BasicServicesKit';
 import { promptAction } from '@kit.ArkUI';
@@ -7,10 +6,14 @@ import { PreferencesUtil } from '../common/PreferencesUtil';
 import { OneTextItem, FeedConfig } from '../model/DataModels';
 import { componentSnapshot, image } from '@kit.ArkUI';
 import { photoAccessHelper } from '@kit.MediaLibraryKit';
+import { SettingsPageContent } from './SettingsPage';
+import { AboutPageContent } from './AboutPage';
+import { EditFeedPageContent } from './EditFeedPage';
 
 /**
  * 主页面 - 替代 Android MainActivity
  * 展示一言内容，支持刷新、保存截图、分享等功能
+ * HarmonyOS 6: 使用 Navigation + NavDestination 导航模式
  */
 @Entry
 @Component
@@ -31,6 +34,7 @@ struct Index {
   @State fromFontSize: number = 12;
   @State showSizeControls: boolean = false;
   @State sealVisible: boolean = false;
+  @Provide('navPathStack') navPathStack: NavPathStack = new NavPathStack();
 
   private context: common.UIAbilityContext = getContext(this) as common.UIAbilityContext;
   private coreUtil: CoreUtil = new CoreUtil(this.context);
@@ -126,26 +130,27 @@ struct Index {
   }
 
   build() {
-    Column() {
-      // 顶部标题栏
-      Row() {
-        Text('OneText')
-          .fontSize(20)
-          .fontWeight(FontWeight.Bold)
-          .fontColor($r('app.color.colorText1'))
+    Navigation(this.navPathStack) {
+      Column() {
+        // 顶部标题栏
+        Row() {
+          Text('OneText')
+            .fontSize(20)
+            .fontWeight(FontWeight.Bold)
+            .fontColor($r('app.color.colorText1'))
 
-        Blank()
+          Blank()
 
-        Image($r('app.media.ic_settings'))
-          .width(24)
-          .height(24)
-          .onClick(() => {
-            router.pushUrl({ url: 'pages/SettingsPage' });
-          })
-      }
-      .width('100%')
-      .height(56)
-      .padding({ left: 16, right: 16 })
+          Image($r('app.media.ic_settings'))
+            .width(24)
+            .height(24)
+            .onClick(() => {
+              this.navPathStack.pushPathByName('SettingsPage', null);
+            })
+        }
+        .width('100%')
+        .height(56)
+        .padding({ left: 16, right: 16 })
 
       // 主内容区域 - 可滚动
       Scroll() {
@@ -358,6 +363,22 @@ struct Index {
     .width('100%')
     .height('100%')
     .backgroundColor($r('app.color.colorBackground'))
+    .expandSafeArea([SafeAreaType.SYSTEM], [SafeAreaEdge.TOP, SafeAreaEdge.BOTTOM])
+    }
+    .hideTitleBar(true)
+    .navDestination(this.PageMap)
+    .mode(NavigationMode.Stack)
+  }
+
+  @Builder
+  PageMap(name: string) {
+    if (name === 'SettingsPage') {
+      SettingsPageContent()
+    } else if (name === 'AboutPage') {
+      AboutPageContent()
+    } else if (name === 'EditFeedPage') {
+      EditFeedPageContent()
+    }
   }
 
   @Builder

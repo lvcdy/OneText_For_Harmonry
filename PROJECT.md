@@ -16,9 +16,11 @@
 ### HarmonyOS 版本
 
 - **Bundle Name**: `com.lz233.onetext`
+- **编译 SDK**: HarmonyOS 6.0.0 (API 16)
 - **兼容 SDK**: HarmonyOS 5.0.0 (API 12)
 - **开发语言**: ArkTS (TypeScript)
 - **UI 框架**: ArkUI 声明式
+- **导航模式**: Navigation + NavDestination（HarmonyOS 6 标准）
 - **项目目录**: `harmony/`
 - **许可证**: LGPL v3
 
@@ -285,6 +287,7 @@ harmony/
 | Material Switch | Toggle | 开关组件 |
 | SeekBar/Slider | Slider | 滑块组件 |
 | Spinner | Select | 下拉选择器 |
+| Intent Navigation | Navigation + NavDestination | HarmonyOS 6 标准导航模式 |
 
 ### 已移植功能
 
@@ -311,13 +314,23 @@ harmony/
 - ❌ 二维码生成
 - ❌ Microsoft AppCenter 崩溃收集
 
+### HarmonyOS 6 适配要点
+
+- **Navigation 导航模式**: 从 `router` 迁移到 `Navigation` + `NavDestination`，使用 `NavPathStack` 管理页面栈
+- **沉浸式状态栏**: 使用 `setWindowLayoutFullScreen` + `expandSafeArea` 实现全屏沉浸体验
+- **设备类型扩展**: 新增 `2in1` 设备类型，支持折叠屏和平板二合一形态
+- **卡片 formId 持久化**: 在 `onAddForm` 中保存 formId，`onRemoveForm` 中清理，确保重启后卡片可正常更新
+- **SDK 版本**: 编译 SDK 升级至 6.0.0 (API 16)，保持 5.0.0 (API 12) 向下兼容
+- **构建工具**: hvigor 升级至 5.8.0
+
 ### 构建与运行
 
 #### 环境要求
 
 - DevEco Studio 5.0+ (NEXT)
-- HarmonyOS SDK 5.0.0 (API 12)
+- HarmonyOS SDK 6.0.0 (API 16)，向下兼容 API 12
 - Node.js 16+
+- hvigor 5.8.0+
 
 #### 构建步骤
 

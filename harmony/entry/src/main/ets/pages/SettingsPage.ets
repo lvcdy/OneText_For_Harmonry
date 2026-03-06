@@ -1,4 +1,3 @@
-import { router } from '@kit.ArkUI';
 import { common } from '@kit.AbilityKit';
 import { promptAction } from '@kit.ArkUI';
 import { PreferencesUtil } from '../common/PreferencesUtil';
@@ -7,11 +6,10 @@ import { FeedConfig, FeedItem } from '../model/DataModels';
 
 /**
  * 设置页面 - 替代 Android SettingActivity
- * 包含界面设置、订阅源管理、小组件配置、关于入口等
+ * HarmonyOS 6: 使用 NavDestination 作为导航目的地
  */
-@Entry
 @Component
-struct SettingsPage {
+export struct SettingsPageContent {
   @State displayModeIndex: number = 0;
   @State chineseTypeIndex: number = 0;
   @State feedAutoUpdate: boolean = true;
@@ -22,6 +20,7 @@ struct SettingsPage {
   @State widgetRefreshTime: number = 30;
   @State feedList: FeedItem[] = [];
   @State selectedFeedIndex: number = 0;
+  @Consume('navPathStack') navPathStack: NavPathStack;
 
   private context: common.UIAbilityContext = getContext(this) as common.UIAbilityContext;
   private prefs: PreferencesUtil = PreferencesUtil.getInstance();
@@ -79,15 +78,16 @@ struct SettingsPage {
   }
 
   build() {
-    Column() {
-      // 顶部标题栏
-      Row() {
-        Image($r('app.media.ic_back'))
-          .width(24)
-          .height(24)
-          .onClick(() => {
-            router.back();
-          })
+    NavDestination() {
+      Column() {
+        // 顶部标题栏
+        Row() {
+          Image($r('app.media.ic_back'))
+            .width(24)
+            .height(24)
+            .onClick(() => {
+              this.navPathStack.pop();
+            })
 
         Text($r('app.string.setting_title'))
           .fontSize(20)
@@ -154,7 +154,7 @@ struct SettingsPage {
               .height(20)
               .margin({ right: 16 })
               .onClick(() => {
-                router.pushUrl({ url: 'pages/EditFeedPage' });
+                this.navPathStack.pushPathByName('EditFeedPage', null);
               })
           }
           .width('100%')
@@ -285,7 +285,7 @@ struct SettingsPage {
           .width('100%')
           .padding({ left: 16, right: 16, top: 12, bottom: 12 })
           .onClick(() => {
-            router.pushUrl({ url: 'pages/AboutPage' });
+            this.navPathStack.pushPathByName('AboutPage', null);
           })
         }
         .width('100%')
@@ -295,10 +295,12 @@ struct SettingsPage {
       .layoutWeight(1)
       .scrollBar(BarState.Off)
       .edgeEffect(EdgeEffect.Spring)
+      }
+      .width('100%')
+      .height('100%')
+      .backgroundColor($r('app.color.colorBackground'))
     }
-    .width('100%')
-    .height('100%')
-    .backgroundColor($r('app.color.colorBackground'))
+    .hideTitleBar(true)
   }
 
   @Builder

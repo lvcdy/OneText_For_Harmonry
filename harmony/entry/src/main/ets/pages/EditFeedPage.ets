@@ -1,4 +1,3 @@
-import { router } from '@kit.ArkUI';
 import { common } from '@kit.AbilityKit';
 import { promptAction } from '@kit.ArkUI';
 import { CoreUtil } from '../common/CoreUtil';
@@ -7,16 +6,16 @@ import { FeedConfig } from '../model/DataModels';
 
 /**
  * 编辑订阅源页面 - 替代 Android EditFeedActivity
- * 支持添加/删除自定义订阅源
+ * HarmonyOS 6: 使用 NavDestination 作为导航目的地
  */
-@Entry
 @Component
-struct EditFeedPage {
+export struct EditFeedPageContent {
   @State feeds: FeedConfig[] = [];
   @State showAddDialog: boolean = false;
   @State newFeedName: string = '';
   @State newFeedUrl: string = '';
   @State newFeedType: number = 0; // 0: remote, 1: internet
+  @Consume('navPathStack') navPathStack: NavPathStack;
 
   private context: common.UIAbilityContext = getContext(this) as common.UIAbilityContext;
   private coreUtil: CoreUtil = new CoreUtil(this.context);
@@ -75,15 +74,16 @@ struct EditFeedPage {
   }
 
   build() {
-    Column() {
-      // 顶部标题栏
-      Row() {
-        Image($r('app.media.ic_back'))
-          .width(24)
-          .height(24)
-          .onClick(() => {
-            router.back();
-          })
+    NavDestination() {
+      Column() {
+        // 顶部标题栏
+        Row() {
+          Image($r('app.media.ic_back'))
+            .width(24)
+            .height(24)
+            .onClick(() => {
+              this.navPathStack.pop();
+            })
 
         Text($r('app.string.feed_edit'))
           .fontSize(20)
@@ -254,9 +254,11 @@ struct EditFeedPage {
           this.showAddDialog = false;
         })
       }
+      }
+      .width('100%')
+      .height('100%')
+      .backgroundColor($r('app.color.colorBackground'))
     }
-    .width('100%')
-    .height('100%')
-    .backgroundColor($r('app.color.colorBackground'))
+    .hideTitleBar(true)
   }
 }

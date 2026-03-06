@@ -1,22 +1,22 @@
-import { router } from '@kit.ArkUI';
-
 /**
  * 关于页面 - 替代 Android AboutActivity
- * 展示应用介绍、致谢和相关链接
+ * HarmonyOS 6: 使用 NavDestination 作为导航目的地
  */
-@Entry
 @Component
-struct AboutPage {
+export struct AboutPageContent {
+  @Consume('navPathStack') navPathStack: NavPathStack;
+
   build() {
-    Column() {
-      // 顶部标题栏
-      Row() {
-        Image($r('app.media.ic_back'))
-          .width(24)
-          .height(24)
-          .onClick(() => {
-            router.back();
-          })
+    NavDestination() {
+      Column() {
+        // 顶部标题栏
+        Row() {
+          Image($r('app.media.ic_back'))
+            .width(24)
+            .height(24)
+            .onClick(() => {
+              this.navPathStack.pop();
+            })
 
         Text($r('app.string.about_text'))
           .fontSize(20)
@@ -50,7 +50,7 @@ struct AboutPage {
               .fontColor($r('app.color.colorText3'))
               .margin({ top: 4 })
 
-            Text('v2.0.0 · HarmonyOS')
+            Text('v3.0.0 · HarmonyOS 6')
               .fontSize(12)
               .fontColor($r('app.color.colorText4'))
               .margin({ top: 8 })
@@ -162,10 +162,12 @@ struct AboutPage {
       .layoutWeight(1)
       .scrollBar(BarState.Off)
       .edgeEffect(EdgeEffect.Spring)
+      }
+      .width('100%')
+      .height('100%')
+      .backgroundColor($r('app.color.colorBackground'))
     }
-    .width('100%')
-    .height('100%')
-    .backgroundColor($r('app.color.colorBackground'))
+    .hideTitleBar(true)
   }
 
   @Builder
