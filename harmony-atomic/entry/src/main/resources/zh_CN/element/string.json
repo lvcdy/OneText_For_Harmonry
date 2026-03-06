@@ -1,0 +1,168 @@
+{
+    "string": [
+        {
+            "name": "module_desc",
+            "value": "一言元服务主模块"
+        },
+        {
+            "name": "EntryAbility_desc",
+            "value": "一言元服务入口"
+        },
+        {
+            "name": "EntryAbility_label",
+            "value": "一言"
+        },
+        {
+            "name": "app_name",
+            "value": "一言"
+        },
+        {
+            "name": "widget_display_name",
+            "value": "一言小组件"
+        },
+        {
+            "name": "widget_desc",
+            "value": "在桌面显示随机句子"
+        },
+        {
+            "name": "record_time",
+            "value": "记录于"
+        },
+        {
+            "name": "created_time",
+            "value": "创作于"
+        },
+        {
+            "name": "save_button",
+            "value": "保存"
+        },
+        {
+            "name": "save_succeed",
+            "value": "保存成功"
+        },
+        {
+            "name": "save_fail",
+            "value": "保存失败"
+        },
+        {
+            "name": "refresh_button",
+            "value": "刷新"
+        },
+        {
+            "name": "setting_title",
+            "value": "设置"
+        },
+        {
+            "name": "feed_text",
+            "value": "订阅源"
+        },
+        {
+            "name": "feed_refresh_text",
+            "value": "源刷新时间："
+        },
+        {
+            "name": "widget_text",
+            "value": "小组件"
+        },
+        {
+            "name": "widget_dark",
+            "value": "暗色"
+        },
+        {
+            "name": "widget_refresh_text",
+            "value": "小组件刷新时间："
+        },
+        {
+            "name": "widget_center",
+            "value": "居中"
+        },
+        {
+            "name": "widget_shadow",
+            "value": "阴影"
+        },
+        {
+            "name": "default_text",
+            "value": "默认"
+        },
+        {
+            "name": "onetext_text_size",
+            "value": "一言大小："
+        },
+        {
+            "name": "onetext_by_size",
+            "value": "作者文字大小："
+        },
+        {
+            "name": "about_text",
+            "value": "关于"
+        },
+        {
+            "name": "about_introduction",
+            "value": "一言是一个简洁的小应用，能在启动器上通过小组件显示一些自定义的句子。你还可以在应用中生成句子截图，并保存或分享。"
+        },
+        {
+            "name": "interface_text",
+            "value": "界面"
+        },
+        {
+            "name": "interface_daynight",
+            "value": "显示模式"
+        },
+        {
+            "name": "share_text",
+            "value": "分享"
+        },
+        {
+            "name": "copied",
+            "value": "已复制"
+        },
+        {
+            "name": "refresh_failed",
+            "value": "更新失败，请检查网络。"
+        },
+        {
+            "name": "retry",
+            "value": "重试"
+        },
+        {
+            "name": "init_failed",
+            "value": "初始化失败，请检查网络。"
+        },
+        {
+            "name": "feed_auto_update",
+            "value": "自动更新"
+        },
+        {
+            "name": "feed_edit",
+            "value": "编辑"
+        },
+        {
+            "name": "feed_delete",
+            "value": "删除"
+        },
+        {
+            "name": "delete_succeed",
+            "value": "删除成功"
+        },
+        {
+            "name": "minute",
+            "value": "分"
+        },
+        {
+            "name": "hour",
+            "value": "时"
+        },
+        {
+            "name": "succeed",
+            "value": "成功"
+        },
+        {
+            "name": "behavior_text",
+            "value": "行为"
+        },
+        {
+            "name": "chinese_type",
+            "value": "中文类型"
+        }
+    ]
+}

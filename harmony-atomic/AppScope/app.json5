@@ -1,0 +1,11 @@
+{
+  "app": {
+    "bundleName": "com.lz233.onetext",
+    "bundleType": "atomicService",
+    "vendor": "lz233",
+    "versionCode": 2000000,
+    "versionName": "3.0.0",
+    "icon": "$media:app_icon",
+    "label": "$string:app_name"
+  }
+}

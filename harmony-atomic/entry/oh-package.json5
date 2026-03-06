@@ -1,0 +1,9 @@
+{
+  "name": "entry",
+  "version": "1.0.0",
+  "description": "OneText atomic service entry module",
+  "main": "",
+  "author": "",
+  "license": "LGPL-3.0",
+  "dependencies": {}
+}

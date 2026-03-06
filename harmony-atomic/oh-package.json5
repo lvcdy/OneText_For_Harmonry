@@ -1,0 +1,10 @@
+{
+  "modelVersion": "5.0.0",
+  "description": "OneText - 一言鸿蒙元服务版",
+  "dependencies": {},
+  "devDependencies": {
+    "@ohos/hypium": "1.0.21",
+    "@ohos/hvigor-ohos-plugin": "5.8.0",
+    "@ohos/hvigor": "5.8.0"
+  }
+}

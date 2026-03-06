@@ -1,0 +1,51 @@
+[
+    {
+        "feed_name": "OneText Library",
+        "feed_type": "remote",
+        "feed_url": "https://cdn.jsdelivr.net/gh/lz233/OneText-Library@master/OneText-Library.json",
+        "text_key": "text",
+        "by_key": "by",
+        "uri_key": "uri",
+        "time_key": "time",
+        "from_key": "from"
+    },
+    {
+        "feed_name": "[TEST] Hitokoto",
+        "feed_type": "remote",
+        "feed_url": "https://cdn.jsdelivr.net/gh/XiaoMengXinX/OneText-Library/all.json",
+        "text_key": "text",
+        "by_key": "by",
+        "uri_key": "uri",
+        "time_key": "time",
+        "from_key": "from"
+    },
+    {
+        "feed_name": "[TEST] Hitokoto Anime",
+        "feed_type": "remote",
+        "feed_url": "https://cdn.jsdelivr.net/gh/XiaoMengXinX/OneText-Library/a.json",
+        "text_key": "text",
+        "by_key": "by",
+        "uri_key": "uri",
+        "time_key": "time",
+        "from_key": "from"
+    },
+    {
+        "feed_name": "[TEST] Poems",
+        "feed_type": "remote",
+        "feed_url": "https://cdn.jsdelivr.net/gh/YlmfGo/OneText-Library_Poems/OneText-Library_Poems.json",
+        "text_key": "text",
+        "by_key": "by",
+        "time_key": "time",
+        "from_key": "from"
+    },
+    {
+        "feed_name": "Hitokoto",
+        "feed_type": "internet",
+        "api_method": "GET",
+        "api_url": "https://v1.hitokoto.cn",
+        "text_key": "hitokoto",
+        "by_key": "from_who",
+        "from_key": "from",
+        "sponsor_url": "https://hitokoto.cn/donate"
+    }
+]
