@@ -1,8 +1,8 @@
 {
-  "src": [
-    "pages/Index",
-    "pages/SettingsPage",
-    "pages/AboutPage",
-    "pages/EditFeedPage"
-  ]
+    "src": [
+        "pages/Index",
+        "pages/SettingsPage",
+        "pages/AboutPage",
+        "pages/EditFeedPage"
+    ]
 }

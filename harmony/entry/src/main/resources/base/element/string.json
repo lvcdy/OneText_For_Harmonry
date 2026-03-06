@@ -1,168 +1,168 @@
 {
-  "string": [
-    {
-      "name": "module_desc",
-      "value": "OneText entry module"
-    },
-    {
-      "name": "EntryAbility_desc",
-      "value": "OneText Main Ability"
-    },
-    {
-      "name": "EntryAbility_label",
-      "value": "OneText"
-    },
-    {
-      "name": "app_name",
-      "value": "OneText"
-    },
-    {
-      "name": "widget_display_name",
-      "value": "OneText Widget"
-    },
-    {
-      "name": "widget_desc",
-      "value": "Display a random quote on home screen"
-    },
-    {
-      "name": "record_time",
-      "value": "Recorded on"
-    },
-    {
-      "name": "created_time",
-      "value": "Created on"
-    },
-    {
-      "name": "save_button",
-      "value": "Save"
-    },
-    {
-      "name": "save_succeed",
-      "value": "Saved successfully"
-    },
-    {
-      "name": "save_fail",
-      "value": "Save failed"
-    },
-    {
-      "name": "refresh_button",
-      "value": "Refresh"
-    },
-    {
-      "name": "setting_title",
-      "value": "Settings"
-    },
-    {
-      "name": "feed_text",
-      "value": "Feed"
-    },
-    {
-      "name": "feed_refresh_text",
-      "value": "Feed Refresh Time:"
-    },
-    {
-      "name": "widget_text",
-      "value": "Widget"
-    },
-    {
-      "name": "widget_dark",
-      "value": "Dark"
-    },
-    {
-      "name": "widget_refresh_text",
-      "value": "Widget Refresh Time:"
-    },
-    {
-      "name": "widget_center",
-      "value": "Center"
-    },
-    {
-      "name": "widget_shadow",
-      "value": "With shadow"
-    },
-    {
-      "name": "default_text",
-      "value": "Default"
-    },
-    {
-      "name": "onetext_text_size",
-      "value": "OneText Size:"
-    },
-    {
-      "name": "onetext_by_size",
-      "value": "Author Text Size:"
-    },
-    {
-      "name": "about_text",
-      "value": "About"
-    },
-    {
-      "name": "about_introduction",
-      "value": "OneText is a neat little application that can display some custom sentences through widgets on the launcher. You can also generate screenshots of sentences in the app and save or share them."
-    },
-    {
-      "name": "interface_text",
-      "value": "Interface"
-    },
-    {
-      "name": "interface_daynight",
-      "value": "Display Mode"
-    },
-    {
-      "name": "share_text",
-      "value": "Share"
-    },
-    {
-      "name": "copied",
-      "value": "Copied"
-    },
-    {
-      "name": "refresh_failed",
-      "value": "Update failed, please check the network."
-    },
-    {
-      "name": "retry",
-      "value": "Retry"
-    },
-    {
-      "name": "init_failed",
-      "value": "Initialization failed, please check the network."
-    },
-    {
-      "name": "feed_auto_update",
-      "value": "Auto Update"
-    },
-    {
-      "name": "feed_edit",
-      "value": "Edit"
-    },
-    {
-      "name": "feed_delete",
-      "value": "Delete"
-    },
-    {
-      "name": "delete_succeed",
-      "value": "Delete successfully"
-    },
-    {
-      "name": "minute",
-      "value": "MIN"
-    },
-    {
-      "name": "hour",
-      "value": "H"
-    },
-    {
-      "name": "succeed",
-      "value": "Succeed"
-    },
-    {
-      "name": "behavior_text",
-      "value": "Behavior"
-    },
-    {
-      "name": "chinese_type",
-      "value": "Chinese Type"
-    }
-  ]
+    "string": [
+        {
+            "name": "module_desc",
+            "value": "OneText entry module"
+        },
+        {
+            "name": "EntryAbility_desc",
+            "value": "OneText Main Ability"
+        },
+        {
+            "name": "EntryAbility_label",
+            "value": "OneText"
+        },
+        {
+            "name": "app_name",
+            "value": "OneText"
+        },
+        {
+            "name": "widget_display_name",
+            "value": "OneText Widget"
+        },
+        {
+            "name": "widget_desc",
+            "value": "Display a random quote on home screen"
+        },
+        {
+            "name": "record_time",
+            "value": "Recorded on"
+        },
+        {
+            "name": "created_time",
+            "value": "Created on"
+        },
+        {
+            "name": "save_button",
+            "value": "Save"
+        },
+        {
+            "name": "save_succeed",
+            "value": "Saved successfully"
+        },
+        {
+            "name": "save_fail",
+            "value": "Save failed"
+        },
+        {
+            "name": "refresh_button",
+            "value": "Refresh"
+        },
+        {
+            "name": "setting_title",
+            "value": "Settings"
+        },
+        {
+            "name": "feed_text",
+            "value": "Feed"
+        },
+        {
+            "name": "feed_refresh_text",
+            "value": "Feed Refresh Time:"
+        },
+        {
+            "name": "widget_text",
+            "value": "Widget"
+        },
+        {
+            "name": "widget_dark",
+            "value": "Dark"
+        },
+        {
+            "name": "widget_refresh_text",
+            "value": "Widget Refresh Time:"
+        },
+        {
+            "name": "widget_center",
+            "value": "Center"
+        },
+        {
+            "name": "widget_shadow",
+            "value": "With shadow"
+        },
+        {
+            "name": "default_text",
+            "value": "Default"
+        },
+        {
+            "name": "onetext_text_size",
+            "value": "OneText Size:"
+        },
+        {
+            "name": "onetext_by_size",
+            "value": "Author Text Size:"
+        },
+        {
+            "name": "about_text",
+            "value": "About"
+        },
+        {
+            "name": "about_introduction",
+            "value": "OneText is a neat little application that can display some custom sentences through widgets on the launcher. You can also generate screenshots of sentences in the app and save or share them."
+        },
+        {
+            "name": "interface_text",
+            "value": "Interface"
+        },
+        {
+            "name": "interface_daynight",
+            "value": "Display Mode"
+        },
+        {
+            "name": "share_text",
+            "value": "Share"
+        },
+        {
+            "name": "copied",
+            "value": "Copied"
+        },
+        {
+            "name": "refresh_failed",
+            "value": "Update failed, please check the network."
+        },
+        {
+            "name": "retry",
+            "value": "Retry"
+        },
+        {
+            "name": "init_failed",
+            "value": "Initialization failed, please check the network."
+        },
+        {
+            "name": "feed_auto_update",
+            "value": "Auto Update"
+        },
+        {
+            "name": "feed_edit",
+            "value": "Edit"
+        },
+        {
+            "name": "feed_delete",
+            "value": "Delete"
+        },
+        {
+            "name": "delete_succeed",
+            "value": "Delete successfully"
+        },
+        {
+            "name": "minute",
+            "value": "MIN"
+        },
+        {
+            "name": "hour",
+            "value": "H"
+        },
+        {
+            "name": "succeed",
+            "value": "Succeed"
+        },
+        {
+            "name": "behavior_text",
+            "value": "Behavior"
+        },
+        {
+            "name": "chinese_type",
+            "value": "Chinese Type"
+        }
+    ]
 }
