@@ -1,8 +1,0 @@
-{
-  "modelVersion": "6.1.0",
-  "description": "OneText - 一言鸿蒙元服务版",
-  "dependencies": {},
-  "devDependencies": {
-    "@ohos/hypium": "1.0.21"
-  }
-}
