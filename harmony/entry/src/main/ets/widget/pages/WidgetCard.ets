@@ -20,116 +20,56 @@ struct WidgetCard {
   }
 
   build() {
-    const darkMode = this.isEnabled(this.widgetDark);
-    const shadowMode = this.isEnabled(this.widgetShadow);
-    const centerMode = this.isEnabled(this.widgetCenter);
-    const textColor = darkMode ? '#F5F7FA' : '#1C1C1C';
-    const subTextColor = darkMode ? '#D0D5DD' : '#434343';
     Column() {
-      Column() {
-        if (centerMode) {
-          if (shadowMode) {
-            Text(this.text)
-              .fontSize(16)
-              .fontColor(textColor)
-              .textAlign(TextAlign.Center)
-              .maxLines(4)
-              .textOverflow({ overflow: TextOverflow.Ellipsis })
-              .width('100%')
-              .padding({ left: 16, right: 16 })
-              .textShadow({
-                radius: 4,
-                color: darkMode ? '#80000000' : '#40000000',
-                offsetX: 1,
-                offsetY: 1
-              })
-          } else {
-            Text(this.text)
-              .fontSize(16)
-              .fontColor(textColor)
-              .textAlign(TextAlign.Center)
-              .maxLines(4)
-              .textOverflow({ overflow: TextOverflow.Ellipsis })
-              .width('100%')
-              .padding({ left: 16, right: 16 })
-          }
-        } else {
-          if (shadowMode) {
-            Text(this.text)
-              .fontSize(16)
-              .fontColor(textColor)
-              .textAlign(TextAlign.Start)
-              .maxLines(4)
-              .textOverflow({ overflow: TextOverflow.Ellipsis })
-              .width('100%')
-              .padding({ left: 16, right: 16 })
-              .textShadow({
-                radius: 4,
-                color: darkMode ? '#80000000' : '#40000000',
-                offsetX: 1,
-                offsetY: 1
-              })
-          } else {
-            Text(this.text)
-              .fontSize(16)
-              .fontColor(textColor)
-              .textAlign(TextAlign.Start)
-              .maxLines(4)
-              .textOverflow({ overflow: TextOverflow.Ellipsis })
-              .width('100%')
-              .padding({ left: 16, right: 16 })
-          }
-        }
+      if (this.isEnabled(this.widgetCenter)) {
+        Text(this.text)
+          .fontSize(15)
+          .fontColor(this.isEnabled(this.widgetDark) ? '#1C1C1C' : '#FFFFFF')
+          .textAlign(TextAlign.Center)
+          .maxLines(4)
+          .textOverflow({ overflow: TextOverflow.Ellipsis })
+          .width('100%')
+          .textShadow({
+            radius: this.isEnabled(this.widgetShadow) ? 8 : 0,
+            color: this.isEnabled(this.widgetShadow) ? '#B0000000' : '#00000000',
+            offsetX: 0,
+            offsetY: 0
+          })
+      } else {
+        Text(this.text)
+          .fontSize(15)
+          .fontColor(this.isEnabled(this.widgetDark) ? '#1C1C1C' : '#FFFFFF')
+          .textAlign(TextAlign.Start)
+          .maxLines(4)
+          .textOverflow({ overflow: TextOverflow.Ellipsis })
+          .textShadow({
+            radius: this.isEnabled(this.widgetShadow) ? 8 : 0,
+            color: this.isEnabled(this.widgetShadow) ? '#B0000000' : '#00000000',
+            offsetX: 0,
+            offsetY: 0
+          })
 
-        // 作者
-        if (this.by !== '' && !centerMode) {
-          if (shadowMode) {
-            Text(`—— ${this.by}`)
-              .fontSize(12)
-              .fontColor(subTextColor)
-              .textAlign(TextAlign.End)
-              .width('100%')
-              .margin({ top: 8 })
-              .padding({ right: 16 })
-              .textShadow({
-                radius: 3,
-                color: darkMode ? '#80000000' : '#40000000',
-                offsetX: 1,
-                offsetY: 1
-              })
-          } else {
-            Text(`—— ${this.by}`)
-              .fontSize(12)
-              .fontColor(subTextColor)
-              .textAlign(TextAlign.End)
-              .width('100%')
-              .margin({ top: 8 })
-              .padding({ right: 16 })
-          }
+        if (this.by !== '') {
+          Text(`—— ${this.by}`)
+            .fontSize(15)
+            .fontColor(this.isEnabled(this.widgetDark) ? '#434343' : '#FFFFFF')
+            .textAlign(TextAlign.End)
+            .width('100%')
+            .textShadow({
+              radius: this.isEnabled(this.widgetShadow) ? 8 : 0,
+              color: this.isEnabled(this.widgetShadow) ? '#B0000000' : '#00000000',
+              offsetX: 0,
+              offsetY: 0
+            })
         }
       }
-      .width('100%')
-      .alignItems(centerMode ? HorizontalAlign.Center : HorizontalAlign.Start)
     }
     .width('100%')
     .height('100%')
     .justifyContent(FlexAlign.Center)
     .alignItems(HorizontalAlign.Center)
-    .padding(12)
-    .linearGradient(darkMode ? {
-      direction: GradientDirection.BottomRight,
-      colors: [
-        ['#1F2937', 0.0],
-        ['#111827', 1.0]
-      ]
-    } : {
-      direction: GradientDirection.BottomRight,
-      colors: [
-        ['#667eea', 0.0],
-        ['#764ba2', 1.0]
-      ]
-    })
-    .borderRadius(16)
+    .padding(0)
+    .backgroundColor(Color.Transparent)
     .onClick(() => {
       postCardAction(this, {
         action: 'router',

@@ -1,13 +1,28 @@
 {
   "app": {
-    "signingConfigs": [],
+    "signingConfigs": [
+      {
+        "name": "default",
+        "type": "HarmonyOS",
+        "material": {
+          "certpath": "C:\\Users\\zhz\\.ohos\\config\\default_harmony-atomic_p53ibw6FeFZKN2d9nVx4BCnqc3T54IJypeqDHNtLvvs=.cer",
+          "keyAlias": "debugKey",
+          "keyPassword": "0000001B8845EA01C684C50834ED8F3E66FD318E5A98FCDF0717CE24EA5E0789ECF2983FC2EEFA3E4B8C5D",
+          "profile": "C:\\Users\\zhz\\.ohos\\config\\default_harmony-atomic_p53ibw6FeFZKN2d9nVx4BCnqc3T54IJypeqDHNtLvvs=.p7b",
+          "signAlg": "SHA256withECDSA",
+          "storeFile": "C:\\Users\\zhz\\.ohos\\config\\default_harmony-atomic_p53ibw6FeFZKN2d9nVx4BCnqc3T54IJypeqDHNtLvvs=.p12",
+          "storePassword": "0000001BBF6B47C71C5C1A06B88BA3BC38DB3BC4E9BE4123875050D59B3F3C408955110CBC1E77CD0CDB3A"
+        }
+      }
+    ],
     "products": [
       {
         "name": "default",
         "signingConfig": "default",
         "compileSdkVersion": "6.1.0(23)",
         "compatibleSdkVersion": "6.1.0(23)",
-        "bundleType": "atomicService"
+        "bundleType": "atomicService",
+        "targetSdkVersion": "6.1.0(23)"
       }
     ],
     "buildModeSet": [

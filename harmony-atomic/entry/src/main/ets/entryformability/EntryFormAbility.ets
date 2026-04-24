@@ -2,6 +2,8 @@ import { FormExtensionAbility, formBindingData, formInfo, formProvider } from '@
 import { Want } from '@kit.AbilityKit';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { preferences } from '@kit.ArkData';
+import { fileIo } from '@kit.CoreFileKit';
+import { util } from '@kit.ArkTS';
 
 const TAG = 'EntryFormAbility';
 const DOMAIN = 0x0000;
@@ -21,7 +23,10 @@ export default class EntryFormAbility extends FormExtensionAbility {
 
     const formData: Record<string, string> = {
       'text': '生活不止眼前的苟且，还有诗和远方。',
-      'by': '高晓松'
+      'by': '高晓松',
+      'widget_dark': 'false',
+      'widget_shadow': 'true',
+      'widget_center': 'true'
     };
     return formBindingData.createFormBindingData(formData);
   }
@@ -122,7 +127,6 @@ export default class EntryFormAbility extends FormExtensionAbility {
   private async readFeedData(): Promise<string | null> {
     try {
       const filesDir = this.context.filesDir;
-      const { fileIo } = await import('@kit.CoreFileKit');
       const path = `${filesDir}/OneText/OneText-Library.json`;
       if (fileIo.accessSync(path)) {
         const file = fileIo.openSync(path, fileIo.OpenMode.READ_ONLY);
@@ -130,7 +134,6 @@ export default class EntryFormAbility extends FormExtensionAbility {
         const buf = new ArrayBuffer(stat.size);
         fileIo.readSync(file.fd, buf);
         fileIo.closeSync(file);
-        const { util } = await import('@kit.ArkTS');
         const decoder = new util.TextDecoder('utf-8');
         return decoder.decodeToString(new Uint8Array(buf));
       }
@@ -143,7 +146,6 @@ export default class EntryFormAbility extends FormExtensionAbility {
   private async readFeedConfig(): Promise<string | null> {
     try {
       const filesDir = this.context.filesDir;
-      const { fileIo } = await import('@kit.CoreFileKit');
       const path = `${filesDir}/Feed/Feed.json`;
       if (fileIo.accessSync(path)) {
         const file = fileIo.openSync(path, fileIo.OpenMode.READ_ONLY);
@@ -151,7 +153,6 @@ export default class EntryFormAbility extends FormExtensionAbility {
         const buf = new ArrayBuffer(stat.size);
         fileIo.readSync(file.fd, buf);
         fileIo.closeSync(file);
-        const { util } = await import('@kit.ArkTS');
         const decoder = new util.TextDecoder('utf-8');
         return decoder.decodeToString(new Uint8Array(buf));
       }

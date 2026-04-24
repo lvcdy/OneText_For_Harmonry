@@ -12,10 +12,10 @@ export class CoreUtil {
   static readonly TEXT_REPLACE_HOLDER: string = '@@';
   static readonly TEXT_REPLACE: string = '\n';
 
-  private context: common.UIAbilityContext;
+  private context: common.Context;
   private prefs: PreferencesUtil;
 
-  constructor(context: common.UIAbilityContext) {
+  constructor(context: common.Context) {
     this.context = context;
     this.prefs = PreferencesUtil.getInstance();
   }

@@ -73,14 +73,14 @@ export class FileUtil {
   /**
    * 获取应用沙箱文件目录
    */
-  static getFilesDir(context: common.UIAbilityContext): string {
+  static getFilesDir(context: common.Context): string {
     return context.filesDir;
   }
 
   /**
    * 从 rawfile 复制资源到文件目录
    */
-  static async copyRawFileToDir(context: common.UIAbilityContext, rawFileName: string,
+  static async copyRawFileToDir(context: common.Context, rawFileName: string,
     destDir: string, destFileName: string): Promise<boolean> {
     try {
       const resourceManager = context.resourceManager;

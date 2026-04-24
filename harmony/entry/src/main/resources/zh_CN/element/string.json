@@ -37,6 +37,10 @@
             "value": "保存"
         },
         {
+            "name": "save_text",
+            "value": "保存图片"
+        },
+        {
             "name": "save_succeed",
             "value": "保存成功"
         },
@@ -45,8 +49,28 @@
             "value": "保存失败"
         },
         {
+            "name": "permission_write_imagevideo_reason",
+            "value": "允许一言将句子截图保存到图库。"
+        },
+        {
             "name": "refresh_button",
             "value": "刷新"
+        },
+        {
+            "name": "refresh_onetext_text",
+            "value": "来个新句子"
+        },
+        {
+            "name": "seal_text",
+            "value": "显示一只可爱的初音"
+        },
+        {
+            "name": "seal_button_ison",
+            "value": "隐藏"
+        },
+        {
+            "name": "seal_button_isoff",
+            "value": "显示"
         },
         {
             "name": "setting_title",

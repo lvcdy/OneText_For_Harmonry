@@ -6,7 +6,7 @@
         },
         {
             "name": "colorPrimary",
-            "value": "#828282"
+            "value": "#2F6BFF"
         },
         {
             "name": "colorPrimaryDark",
@@ -18,31 +18,31 @@
         },
         {
             "name": "colorAccent",
-            "value": "#828282"
+            "value": "#2F6BFF"
         },
         {
             "name": "colorText1",
-            "value": "#1C1C1C"
+            "value": "#172033"
         },
         {
             "name": "colorText2",
-            "value": "#434343"
+            "value": "#2C3548"
         },
         {
             "name": "colorText3",
-            "value": "#434343"
+            "value": "#5F6B7A"
         },
         {
             "name": "colorText4",
-            "value": "#787878"
+            "value": "#9AA4B2"
         },
         {
             "name": "colorMD2BG",
-            "value": "#E3E3E3"
+            "value": "#E7ECF3"
         },
         {
             "name": "colorBackground",
-            "value": "#F5F5F5"
+            "value": "#F6F8FC"
         },
         {
             "name": "colorCard",

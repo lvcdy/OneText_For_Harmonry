@@ -144,15 +144,17 @@ export struct EditFeedPageContent {
                 })
             }
             .width('100%')
-            .padding(16)
+            .padding({ left: 18, right: 18, top: 16, bottom: 16 })
             .backgroundColor($r('app.color.colorCard'))
-            .borderRadius(12)
+            .borderRadius(22)
+            .shadow({ radius: 18, color: '#10000000', offsetX: 0, offsetY: 8 })
           }
-          .margin({ left: 16, right: 16, top: 8 })
+          .margin({ left: 18, right: 18, top: 12 })
         })
       }
       .width('100%')
       .layoutWeight(1)
+      .padding({ top: 8, bottom: 24 })
       .scrollBar(BarState.Off)
 
       // 添加订阅源对话框
@@ -207,10 +209,11 @@ export struct EditFeedPageContent {
             Row() {
               Button('取消')
                 .type(ButtonType.Normal)
-                .borderRadius(8)
+                .borderRadius(5)
                 .fontSize(14)
                 .fontColor($r('app.color.colorText2'))
                 .backgroundColor(Color.Transparent)
+                .border({ width: 1.05, color: $r('app.color.colorMD2BG') })
                 .height(40)
                 .layoutWeight(1)
                 .onClick(() => {
@@ -221,7 +224,7 @@ export struct EditFeedPageContent {
 
               Button('添加')
                 .type(ButtonType.Normal)
-                .borderRadius(8)
+                .borderRadius(5)
                 .fontSize(14)
                 .fontColor(Color.White)
                 .backgroundColor($r('app.color.colorPrimary'))
@@ -237,13 +240,8 @@ export struct EditFeedPageContent {
           .width('90%')
           .padding(24)
           .backgroundColor($r('app.color.colorCard'))
-          .borderRadius(20)
-          .shadow({
-            radius: 24,
-            color: '#40000000',
-            offsetX: 0,
-            offsetY: 4
-          })
+          .borderRadius(24)
+          .shadow({ radius: 22, color: '#24000000', offsetX: 0, offsetY: 10 })
         }
         .width('100%')
         .height('100%')
@@ -257,6 +255,7 @@ export struct EditFeedPageContent {
       }
       .width('100%')
       .height('100%')
+      .padding({ top: 36 })
       .backgroundColor($r('app.color.colorBackground'))
     }
     .hideTitleBar(true)

@@ -324,7 +324,7 @@ harmony/
 - **设备类型扩展**: 新增 `2in1` 设备类型，支持折叠屏和平板二合一形态
 - **卡片 formId 持久化**: 在 `onAddForm` 中保存 formId，`onRemoveForm` 中清理，确保重启后卡片可正常更新
 - **SDK 版本**: 编译 SDK 采用 HarmonyOS 6.1.0 (API 23)，兼容 SDK 同步到 6.1.0 (API 23)
-- **构建工具**: hvigor 升级至 6.1.0
+- **构建工具插件**: `@ohos/hvigor-ohos-plugin` 升级至 6.23.5
 
 ### 构建与运行
 
@@ -333,7 +333,7 @@ harmony/
 - DevEco Studio 5.0+ (NEXT)
 - HarmonyOS SDK 6.1.0 (API 23)
 - Node.js 16+
-- hvigor 6.1.0+
+- hvigor / DevEco Studio 对应版本
 
 #### 构建步骤
 

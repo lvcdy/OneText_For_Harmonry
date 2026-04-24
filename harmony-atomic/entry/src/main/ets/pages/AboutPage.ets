@@ -69,8 +69,9 @@ export struct AboutPageContent {
           .width('100%')
           .padding({ left: 24, right: 24, top: 16, bottom: 16 })
           .backgroundColor($r('app.color.colorCard'))
-          .borderRadius(16)
-          .margin({ left: 16, right: 16 })
+          .borderRadius(5)
+          .border({ width: 1.05, color: $r('app.color.colorMD2BG') })
+          .margin({ left: 20, right: 20 })
 
           // 元服务说明
           Column() {
@@ -89,8 +90,9 @@ export struct AboutPageContent {
           .width('100%')
           .padding(20)
           .backgroundColor($r('app.color.colorCard'))
-          .borderRadius(16)
-          .margin({ left: 16, right: 16, top: 16 })
+          .borderRadius(5)
+          .border({ width: 1.05, color: $r('app.color.colorMD2BG') })
+          .margin({ left: 20, right: 20, top: 20 })
 
           // 许可证
           Column() {
@@ -109,8 +111,9 @@ export struct AboutPageContent {
           .width('100%')
           .padding(20)
           .backgroundColor($r('app.color.colorCard'))
-          .borderRadius(16)
-          .margin({ left: 16, right: 16, top: 16 })
+          .borderRadius(5)
+          .border({ width: 1.05, color: $r('app.color.colorMD2BG') })
+          .margin({ left: 20, right: 20, top: 20 })
 
           // 致谢
           Column() {
@@ -134,8 +137,9 @@ export struct AboutPageContent {
           .width('100%')
           .padding(20)
           .backgroundColor($r('app.color.colorCard'))
-          .borderRadius(16)
-          .margin({ left: 16, right: 16, top: 16 })
+          .borderRadius(5)
+          .border({ width: 1.05, color: $r('app.color.colorMD2BG') })
+          .margin({ left: 20, right: 20, top: 20 })
 
           // 相关链接
           Column() {
@@ -153,8 +157,9 @@ export struct AboutPageContent {
           .width('100%')
           .padding(20)
           .backgroundColor($r('app.color.colorCard'))
-          .borderRadius(16)
-          .margin({ left: 16, right: 16, top: 16 })
+          .borderRadius(5)
+          .border({ width: 1.05, color: $r('app.color.colorMD2BG') })
+          .margin({ left: 20, right: 20, top: 20 })
 
           // 依赖项目
           Column() {
@@ -173,8 +178,9 @@ export struct AboutPageContent {
           .width('100%')
           .padding(20)
           .backgroundColor($r('app.color.colorCard'))
-          .borderRadius(16)
-          .margin({ left: 16, right: 16, top: 16, bottom: 32 })
+          .borderRadius(5)
+          .border({ width: 1.05, color: $r('app.color.colorMD2BG') })
+          .margin({ left: 20, right: 20, top: 20, bottom: 20 })
         }
         .width('100%')
       }
@@ -185,6 +191,7 @@ export struct AboutPageContent {
       }
       .width('100%')
       .height('100%')
+      .padding({ top: 36 })
       .backgroundColor($r('app.color.colorBackground'))
     }
     .hideTitleBar(true)

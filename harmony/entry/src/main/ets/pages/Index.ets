@@ -2,11 +2,13 @@ import { common } from '@kit.AbilityKit';
 import { fileIo } from '@kit.CoreFileKit';
 import { pasteboard } from '@kit.BasicServicesKit';
 import { promptAction } from '@kit.ArkUI';
+import { image } from '@kit.ImageKit';
 import { CoreUtil } from '../common/CoreUtil';
 import { PreferencesUtil } from '../common/PreferencesUtil';
 import { OneTextItem, FeedConfig } from '../model/DataModels';
-import { componentSnapshot, image } from '@kit.ArkUI';
+import { componentSnapshot } from '@kit.ArkUI';
 import { photoAccessHelper } from '@kit.MediaLibraryKit';
+import { motion } from '@kit.MultimodalAwarenessKit';
 import { SettingsPageContent } from './SettingsPage';
 import { AboutPageContent } from './AboutPage';
 import { EditFeedPageContent } from './EditFeedPage';
@@ -30,25 +32,34 @@ struct Index {
     quote2: '\u201D'
   };
   @State isLoading: boolean = true;
-  @State textFontSize: number = 24;
-  @State byFontSize: number = 16;
-  @State timeFontSize: number = 12;
-  @State fromFontSize: number = 12;
+  @State textFontSize: number = 23;
+  @State byFontSize: number = 18;
+  @State timeFontSize: number = 15;
+  @State fromFontSize: number = 15;
   @State showSizeControls: boolean = false;
   @State sealVisible: boolean = false;
+  @State isLeftHandHeld: boolean = false;
+  @State isRefreshing: boolean = false;
   @State hasShownWelcome: boolean = false;
   @Provide('navPathStack') navPathStack: NavPathStack = new NavPathStack();
 
   private context: common.UIAbilityContext = getContext(this) as common.UIAbilityContext;
   private coreUtil: CoreUtil = new CoreUtil(this.context);
   private prefs: PreferencesUtil = PreferencesUtil.getInstance();
+  private holdingHandCallback = (status: motion.HoldingHandStatus): void => {
+    if (status === motion.HoldingHandStatus.LEFT_HAND_HELD) {
+      this.updateGripSide(true);
+    } else if (status === motion.HoldingHandStatus.RIGHT_HAND_HELD || status === motion.HoldingHandStatus.BOTH_HANDS_HELD) {
+      this.updateGripSide(false);
+    }
+  };
 
   async aboutToAppear(): Promise<void> {
     // 加载偏好设置
-    this.textFontSize = await this.prefs.getNumber('onetext_text_size', 24);
-    this.byFontSize = await this.prefs.getNumber('onetext_by_size', 16);
-    this.timeFontSize = await this.prefs.getNumber('onetext_time_size', 12);
-    this.fromFontSize = await this.prefs.getNumber('onetext_from_size', 12);
+    this.textFontSize = await this.prefs.getNumber('onetext_text_size', 23);
+    this.byFontSize = await this.prefs.getNumber('onetext_by_size', 18);
+    this.timeFontSize = await this.prefs.getNumber('onetext_time_size', 15);
+    this.fromFontSize = await this.prefs.getNumber('onetext_from_size', 15);
     this.sealVisible = await this.prefs.getBoolean('seal_enabled', false);
 
     // 初始化订阅源
@@ -64,6 +75,42 @@ struct Index {
         this.navPathStack.pushPathByName('WelcomePage', null);
       }
     }
+
+    this.startGripAwareness();
+  }
+
+  aboutToDisappear(): void {
+    try {
+      motion.off('holdingHandChanged', this.holdingHandCallback);
+    } catch (e) {
+      console.warn('Index', `holdingHandChanged off skipped: ${JSON.stringify(e)}`);
+    }
+  }
+
+  private startGripAwareness(): void {
+    try {
+      motion.on('holdingHandChanged', this.holdingHandCallback);
+    } catch (e) {
+      console.warn('Index', `holdingHandChanged unsupported or permission denied: ${JSON.stringify(e)}`);
+    }
+  }
+
+  private updateGripSide(leftHandHeld: boolean): void {
+    if (this.isLeftHandHeld === leftHandHeld) {
+      return;
+    }
+    animateTo({ duration: 260, curve: Curve.EaseOut }, () => {
+      this.isLeftHandHeld = leftHandHeld;
+    });
+  }
+
+  private async refreshByPull(): Promise<void> {
+    if (this.isRefreshing) {
+      return;
+    }
+    this.isRefreshing = true;
+    await this.loadOneText(true);
+    this.isRefreshing = false;
   }
 
   /**
@@ -144,27 +191,42 @@ struct Index {
       Column() {
         // 顶部标题栏
         Row() {
-          Text('OneText')
-            .fontSize(20)
-            .fontWeight(FontWeight.Bold)
-            .fontColor($r('app.color.colorText1'))
+          Column() {
+            Text('OneText')
+              .fontSize(34)
+              .fontWeight(FontWeight.Bold)
+              .fontColor($r('app.color.colorText1'))
+
+            Text('把一句话留在今天')
+              .fontSize(13)
+              .fontColor($r('app.color.colorText4'))
+              .margin({ top: 2 })
+          }
+          .alignItems(HorizontalAlign.Start)
 
           Blank()
 
+          Image($r('app.media.ic_heart'))
+            .width(28)
+            .height(28)
+            .margin({ right: 18 })
+
           Image($r('app.media.ic_settings'))
-            .width(24)
-            .height(24)
+            .width(28)
+            .height(28)
             .onClick(() => {
               this.navPathStack.pushPathByName('SettingsPage', null);
             })
         }
         .width('100%')
-        .height(56)
-        .padding({ left: 16, right: 16 })
+        .height(112)
+        .alignItems(VerticalAlign.Center)
+        .padding({ left: 24, right: 24, top: 36 })
 
       // 主内容区域 - 可滚动
-      Scroll() {
-        Column() {
+      Refresh({ refreshing: $$this.isRefreshing, offset: 72 }) {
+        Scroll() {
+          Column() {
           // 一言卡片
           Column() {
             // 加载指示器
@@ -175,205 +237,135 @@ struct Index {
                 .color($r('app.color.colorPrimary'))
             }
 
-            // 一言内容卡片（可截图区域）
-            Column() {
-              // 引号和文本
-              if (this.oneText.text !== '') {
-                Text(this.oneText.quote1)
-                  .fontSize(this.textFontSize)
-                  .fontColor($r('app.color.colorText1'))
-                  .width('100%')
-                  .textAlign(TextAlign.Start)
-
-                Text(this.oneText.text.replace(CoreUtil.TEXT_REPLACE_HOLDER, CoreUtil.TEXT_REPLACE))
-                  .fontSize(this.textFontSize)
-                  .fontColor($r('app.color.colorText1'))
-                  .width('100%')
-                  .textAlign(TextAlign.Start)
-                  .lineHeight(this.textFontSize * 1.8)
-                  .padding({ top: 8, bottom: 8 })
-                  .onClick(() => {
-                    this.copyToClipboard(this.oneText.text);
-                  })
-
-                Text(this.oneText.quote2)
-                  .fontSize(this.textFontSize)
-                  .fontColor($r('app.color.colorText1'))
-                  .width('100%')
-                  .textAlign(TextAlign.End)
+            Stack() {
+              Column() {
               }
+                .width(190)
+                .height(190)
+                .backgroundColor('#EEF3FF')
+                .borderRadius(95)
+                .opacity(0.78)
+                .position({ x: -54, y: -62 })
+                .zIndex(0)
 
-              // 作者
-              if (this.oneText.by !== '') {
-                Text(`—— ${this.oneText.by}`)
-                  .fontSize(this.byFontSize)
-                  .fontColor($r('app.color.colorText2'))
-                  .width('100%')
-                  .textAlign(TextAlign.End)
-                  .margin({ top: 16 })
-                  .onClick(() => {
-                    this.copyToClipboard(this.oneText.by);
-                  })
+              Column() {
               }
+                .width(120)
+                .height(120)
+                .backgroundColor('#F7FAFF')
+                .borderRadius(60)
+                .opacity(0.9)
+                .position({ x: 248, y: 202 })
+                .zIndex(0)
 
-              // 时间
-              if (this.oneText.time !== '') {
-                Text(this.oneText.time)
-                  .fontSize(this.timeFontSize)
-                  .fontColor($r('app.color.colorText4'))
-                  .width('100%')
-                  .textAlign(TextAlign.End)
-                  .margin({ top: 8 })
-                  .onClick(() => {
-                    this.copyToClipboard(this.oneText.time);
-                  })
-              }
-
-              // 来源
-              if (this.oneText.from !== '') {
-                Text(this.oneText.from)
-                  .fontSize(this.fromFontSize)
-                  .fontColor($r('app.color.colorText3'))
-                  .width('100%')
-                  .textAlign(TextAlign.End)
-                  .margin({ top: 4 })
-                  .onClick(() => {
-                    this.copyToClipboard(this.oneText.from);
-                  })
-              }
-
-              // 印章图片（miku）
               if (this.sealVisible) {
-                Image($r('app.media.green_android'))
-                  .width(80)
-                  .height(80)
-                  .margin({ top: 16 })
-                  .alignSelf(ItemAlign.End)
+                Image($r('app.media.moemiku'))
+                  .width(158)
+                  .height(158)
+                  .opacity(0.42)
+                  .position({ x: 198, y: 112 })
+                  .zIndex(1)
+              }
+
+              if (this.oneText.text !== '') {
+                Column() {
+                  Text(this.oneText.text.replace(CoreUtil.TEXT_REPLACE_HOLDER, CoreUtil.TEXT_REPLACE))
+                    .fontSize(this.textFontSize)
+                    .fontWeight(FontWeight.Medium)
+                    .fontColor($r('app.color.colorText1'))
+                    .width('100%')
+                    .textAlign(TextAlign.Center)
+                    .lineHeight(this.textFontSize * 1.55)
+                    .maxLines(4)
+                    .textOverflow({ overflow: TextOverflow.Ellipsis })
+                    .onClick(() => {
+                      this.copyToClipboard(this.oneText.text);
+                    })
+
+                  if (this.oneText.by !== '') {
+                    Text(`-- ${this.oneText.by}`)
+                      .fontSize(this.byFontSize)
+                      .fontColor($r('app.color.colorText3'))
+                      .textAlign(TextAlign.Center)
+                      .margin({ top: 18 })
+                      .onClick(() => {
+                        this.copyToClipboard(this.oneText.by);
+                      })
+                  }
+
+                  if (this.oneText.from !== '' || this.oneText.time !== '') {
+                    Text(this.oneText.from !== '' ? this.oneText.from : this.oneText.time)
+                      .fontSize(this.fromFontSize)
+                      .fontColor($r('app.color.colorText4'))
+                      .textAlign(TextAlign.Center)
+                      .margin({ top: 18 })
+                      .onClick(() => {
+                        this.copyToClipboard(this.oneText.from !== '' ? this.oneText.from : this.oneText.time);
+                      })
+                  }
+                }
+                .width('100%')
+                .height('100%')
+                .justifyContent(FlexAlign.Center)
+                .alignItems(HorizontalAlign.Center)
+                .padding({ left: 24, right: 24, top: 24, bottom: 24 })
+                .zIndex(2)
               }
             }
             .id('onetext_card')
             .width('100%')
-            .padding(24)
+            .height(286)
             .backgroundColor($r('app.color.colorCard'))
-            .borderRadius(16)
-            .shadow({
-              radius: 8,
-              color: '#1A000000',
-              offsetX: 0,
-              offsetY: 2
-            })
+            .borderRadius(28)
+            .shadow({ radius: 24, color: '#14000000', offsetX: 0, offsetY: 10 })
           }
           .width('100%')
-          .padding({ left: 16, right: 16, top: 8 })
+          .padding({ top: 0 })
 
-          // 操作按钮行
-          Row() {
-            Button($r('app.string.save_button'))
-              .type(ButtonType.Normal)
-              .borderRadius(8)
-              .fontSize(14)
-              .fontColor($r('app.color.colorText1'))
-              .backgroundColor($r('app.color.colorCard'))
-              .height(40)
-              .layoutWeight(1)
-              .margin({ right: 8 })
-              .onClick(() => {
-                this.saveScreenshot();
-              })
-
-            Button($r('app.string.refresh_button'))
-              .type(ButtonType.Normal)
-              .borderRadius(8)
-              .fontSize(14)
-              .fontColor(Color.White)
-              .backgroundColor($r('app.color.colorPrimary'))
-              .height(40)
-              .layoutWeight(1)
-              .margin({ left: 4, right: 4 })
-              .onClick(() => {
-                this.loadOneText(true);
-              })
-
-            Button(this.sealVisible ? '隐藏' : '印章')
-              .type(ButtonType.Normal)
-              .borderRadius(8)
-              .fontSize(14)
-              .fontColor($r('app.color.colorText1'))
-              .backgroundColor($r('app.color.colorCard'))
-              .height(40)
-              .layoutWeight(1)
-              .margin({ left: 8 })
-              .onClick(async () => {
-                this.sealVisible = !this.sealVisible;
-                await this.prefs.putBoolean('seal_enabled', this.sealVisible);
-              })
-          }
-          .width('100%')
-          .padding({ left: 16, right: 16, top: 16 })
-
-          // 字体大小控制区域
           Column() {
-            Row() {
-              Text('字体大小设置')
-                .fontSize(14)
-                .fontColor($r('app.color.colorText2'))
-              Blank()
-              Image($r('app.media.ic_expand'))
-                .width(20)
-                .height(20)
-                .rotate({ angle: this.showSizeControls ? 180 : 0 })
-            }
-            .width('100%')
-            .padding({ left: 16, right: 16, top: 16, bottom: 8 })
-            .onClick(() => {
-              this.showSizeControls = !this.showSizeControls;
+            this.ActionRow($r('app.string.save_text'), $r('app.string.save_button'), () => {
+              this.saveScreenshot();
             })
 
-            if (this.showSizeControls) {
-              Column() {
-                // 一言字体大小
-                this.SizeSlider('一言大小', this.textFontSize, 12, 48, (value: number) => {
-                  this.textFontSize = value;
-                  this.prefs.putNumber('onetext_text_size', value);
-                })
-                // 作者字体大小
-                this.SizeSlider('作者大小', this.byFontSize, 8, 36, (value: number) => {
-                  this.byFontSize = value;
-                  this.prefs.putNumber('onetext_by_size', value);
-                })
-                // 时间字体大小
-                this.SizeSlider('时间大小', this.timeFontSize, 8, 24, (value: number) => {
-                  this.timeFontSize = value;
-                  this.prefs.putNumber('onetext_time_size', value);
-                })
-                // 来源字体大小
-                this.SizeSlider('来源大小', this.fromFontSize, 8, 24, (value: number) => {
-                  this.fromFontSize = value;
-                  this.prefs.putNumber('onetext_from_size', value);
-                })
-              }
-              .padding({ left: 16, right: 16, bottom: 16 })
-              .transition({ type: TransitionType.Insert, opacity: 0 })
-            }
+            this.ActionRow($r('app.string.refresh_onetext_text'), $r('app.string.refresh_button'), () => {
+              this.loadOneText(true);
+            })
+
+            this.ActionRow($r('app.string.seal_text'), this.sealVisible ? $r('app.string.seal_button_ison') : $r('app.string.seal_button_isoff'), async () => {
+              this.sealVisible = !this.sealVisible;
+              await this.prefs.putBoolean('seal_enabled', this.sealVisible);
+              promptAction.showToast({ message: this.sealVisible ? $r('app.string.seal_button_ison') : $r('app.string.seal_button_isoff') });
+            })
+
+            this.TextSizeSlider()
+            this.BySizeSlider()
+            this.TimeSizeSlider()
           }
           .width('100%')
-          .margin({ top: 16 })
+          .padding({ left: 20, right: 20, top: 26, bottom: 24 })
+          .margin({ top: 18 })
           .backgroundColor($r('app.color.colorCard'))
-          .borderRadius(16)
-          .margin({ left: 16, right: 16, top: 16 })
+          .borderRadius(24)
+          .shadow({ radius: 18, color: '#10000000', offsetX: 0, offsetY: 8 })
+          }
+          .width('100%')
+          .padding({ left: 12, right: 12, bottom: 46, top: 8 })
         }
         .width('100%')
-        .padding({ bottom: 32 })
+        .scrollBar(BarState.Off)
+        .edgeEffect(EdgeEffect.Spring)
       }
       .width('100%')
       .layoutWeight(1)
-      .scrollBar(BarState.Off)
-      .edgeEffect(EdgeEffect.Spring)
+      .pullDownRatio(0.72)
+      .refreshOffset(72)
+      .onRefreshing(() => {
+        this.refreshByPull();
+      })
     }
     .width('100%')
     .height('100%')
     .backgroundColor($r('app.color.colorBackground'))
-    .expandSafeArea([SafeAreaType.SYSTEM], [SafeAreaEdge.TOP, SafeAreaEdge.BOTTOM])
     }
     .hideTitleBar(true)
     .navDestination(this.PageMap)
@@ -394,17 +386,51 @@ struct Index {
   }
 
   @Builder
-  SizeSlider(label: string, currentValue: number, min: number, max: number, onChange: (value: number) => void) {
-    Row() {
-      Text(`${label}: ${Math.round(currentValue)}`)
-        .fontSize(13)
-        .fontColor($r('app.color.colorText3'))
-        .width(100)
+  ActionRow(label: ResourceStr, buttonText: ResourceStr, onClick: () => void) {
+    Flex({
+      direction: this.isLeftHandHeld ? FlexDirection.Row : FlexDirection.RowReverse,
+      alignItems: ItemAlign.Center
+    }) {
+      Column() {
+        this.ActionButton(buttonText, onClick)
+      }
+      .width(96)
 
+      Text(label)
+        .fontSize(18)
+        .fontColor($r('app.color.colorText2'))
+        .layoutWeight(1)
+        .margin(this.isLeftHandHeld ? { left: 20, right: 0 } : { left: 0, right: 20 })
+        .textAlign(this.isLeftHandHeld ? TextAlign.Start : TextAlign.Start)
+    }
+    .width('100%')
+    .height(60)
+    .padding({ bottom: 14 })
+    .animation({ duration: 360, curve: Curve.Friction })
+  }
+
+  @Builder
+  ActionButton(buttonText: ResourceStr, onClick: () => void) {
+    Button(buttonText)
+      .type(ButtonType.Normal)
+      .borderRadius(21)
+      .fontSize(14)
+      .fontColor(Color.White)
+      .backgroundColor($r('app.color.colorPrimary'))
+      .width(96)
+      .height(44)
+      .onClick(() => {
+        onClick();
+      })
+  }
+
+  @Builder
+  TextSizeSlider() {
+    Row() {
       Slider({
-        value: currentValue,
-        min: min,
-        max: max,
+        value: this.textFontSize,
+        min: 12,
+        max: 48,
         step: 1,
         style: SliderStyle.OutSet
       })
@@ -413,19 +439,94 @@ struct Index {
         .trackColor($r('app.color.colorMD2BG'))
         .selectedColor($r('app.color.colorPrimary'))
         .onChange((value: number) => {
-          onChange(value);
+          this.textFontSize = value;
+          this.prefs.putNumber('onetext_text_size', value);
         })
+        .margin({ left: 36, right: 24 })
 
       Text($r('app.string.default_text'))
-        .fontSize(12)
+        .fontSize(14)
         .fontColor($r('app.color.colorPrimary'))
+        .width(82)
+        .height(38)
+        .textAlign(TextAlign.Center)
+        .borderRadius(19)
+        .backgroundColor('#EEF3FF')
+        .padding({ top: 10 })
         .onClick(() => {
-          if (label.includes('一言')) onChange(24);
-          else if (label.includes('作者')) onChange(16);
-          else onChange(12);
+          this.textFontSize = 23;
+          this.prefs.putNumber('onetext_text_size', 23);
         })
     }
     .width('100%')
-    .padding({ top: 4, bottom: 4 })
+    .padding({ bottom: 16 })
+  }
+
+  @Builder
+  BySizeSlider() {
+    Row() {
+      Slider({ value: this.byFontSize, min: 8, max: 36, step: 1, style: SliderStyle.OutSet })
+        .layoutWeight(1)
+        .blockColor($r('app.color.colorPrimary'))
+        .trackColor($r('app.color.colorMD2BG'))
+        .selectedColor($r('app.color.colorPrimary'))
+        .onChange((value: number) => {
+          this.byFontSize = value;
+          this.prefs.putNumber('onetext_by_size', value);
+        })
+        .margin({ left: 36, right: 24 })
+
+      Text($r('app.string.default_text'))
+        .fontSize(14)
+        .fontColor($r('app.color.colorPrimary'))
+        .width(82)
+        .height(38)
+        .textAlign(TextAlign.Center)
+        .borderRadius(19)
+        .backgroundColor('#EEF3FF')
+        .padding({ top: 10 })
+        .onClick(() => {
+          this.byFontSize = 18;
+          this.prefs.putNumber('onetext_by_size', 18);
+        })
+    }
+    .width('100%')
+    .padding({ bottom: 16 })
+  }
+
+  @Builder
+  TimeSizeSlider() {
+    Row() {
+      Slider({ value: this.timeFontSize, min: 8, max: 24, step: 1, style: SliderStyle.OutSet })
+        .layoutWeight(1)
+        .blockColor($r('app.color.colorPrimary'))
+        .trackColor($r('app.color.colorMD2BG'))
+        .selectedColor($r('app.color.colorPrimary'))
+        .onChange((value: number) => {
+          this.timeFontSize = value;
+          this.fromFontSize = value;
+          this.prefs.putNumber('onetext_time_size', value);
+          this.prefs.putNumber('onetext_from_size', value);
+        })
+        .margin({ left: 36, right: 24 })
+
+      Text($r('app.string.default_text'))
+        .fontSize(14)
+        .fontColor($r('app.color.colorPrimary'))
+        .width(82)
+        .height(38)
+        .textAlign(TextAlign.Center)
+        .borderRadius(19)
+        .backgroundColor('#EEF3FF')
+        .padding({ top: 10 })
+        .onClick(() => {
+          this.timeFontSize = 15;
+          this.fromFontSize = 15;
+          this.prefs.putNumber('onetext_time_size', 15);
+          this.prefs.putNumber('onetext_from_size', 15);
+        })
+    }
+    .width('100%')
+    .padding({ bottom: 16 })
   }
 }

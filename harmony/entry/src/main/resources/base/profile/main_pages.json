@@ -1,27 +1,5 @@
 {
     "src": [
         "pages/Index"
-    ],
-    "routerMap": [
-        {
-            "name": "WelcomePage",
-            "pageSourceFile": "src/main/ets/pages/WelcomePage.ets",
-            "buildFunction": "WelcomePageContent"
-        },
-        {
-            "name": "SettingsPage",
-            "pageSourceFile": "src/main/ets/pages/SettingsPage.ets",
-            "buildFunction": "SettingsPageContent"
-        },
-        {
-            "name": "AboutPage",
-            "pageSourceFile": "src/main/ets/pages/AboutPage.ets",
-            "buildFunction": "AboutPageContent"
-        },
-        {
-            "name": "EditFeedPage",
-            "pageSourceFile": "src/main/ets/pages/EditFeedPage.ets",
-            "buildFunction": "EditFeedPageContent"
-        }
     ]
 }

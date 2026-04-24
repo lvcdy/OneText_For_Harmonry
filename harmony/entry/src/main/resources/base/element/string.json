@@ -37,6 +37,10 @@
             "value": "Save"
         },
         {
+            "name": "save_text",
+            "value": "Save as a picture"
+        },
+        {
             "name": "save_succeed",
             "value": "Saved successfully"
         },
@@ -45,8 +49,28 @@
             "value": "Save failed"
         },
         {
+            "name": "permission_write_imagevideo_reason",
+            "value": "Allow OneText to save quote screenshots to Photos."
+        },
+        {
             "name": "refresh_button",
             "value": "Refresh"
+        },
+        {
+            "name": "refresh_onetext_text",
+            "value": "Show a new sentence"
+        },
+        {
+            "name": "seal_text",
+            "value": "Show a moe miku"
+        },
+        {
+            "name": "seal_button_ison",
+            "value": "Hide"
+        },
+        {
+            "name": "seal_button_isoff",
+            "value": "Show"
         },
         {
             "name": "setting_title",

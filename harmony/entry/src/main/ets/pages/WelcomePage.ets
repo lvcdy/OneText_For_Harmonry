@@ -51,8 +51,9 @@ export struct WelcomePageContent {
         .width('100%')
         .padding(20)
         .backgroundColor($r('app.color.colorCard'))
-        .borderRadius(16)
-        .margin({ left: 16, right: 16 })
+        .borderRadius(5)
+        .border({ width: 1.05, color: $r('app.color.colorMD2BG') })
+        .margin({ left: 20, right: 20 })
 
         Column() {
           this.StepItem($r('app.string.welcome_step1_title'), $r('app.string.welcome_step1_desc'))
@@ -62,16 +63,18 @@ export struct WelcomePageContent {
         .width('100%')
         .padding(20)
         .backgroundColor($r('app.color.colorCard'))
-        .borderRadius(16)
-        .margin({ left: 16, right: 16, top: 16 })
+        .borderRadius(5)
+        .border({ width: 1.05, color: $r('app.color.colorMD2BG') })
+        .margin({ left: 20, right: 20, top: 20 })
 
         Row() {
           Button($r('app.string.welcome_skip'))
             .type(ButtonType.Normal)
-            .borderRadius(8)
+            .borderRadius(5)
             .fontSize(14)
             .fontColor($r('app.color.colorText2'))
             .backgroundColor($r('app.color.colorCard'))
+            .border({ width: 1.05, color: $r('app.color.colorMD2BG') })
             .height(40)
             .layoutWeight(1)
             .margin({ right: 8 })
@@ -81,7 +84,7 @@ export struct WelcomePageContent {
 
           Button($r('app.string.welcome_next'))
             .type(ButtonType.Normal)
-            .borderRadius(8)
+            .borderRadius(5)
             .fontSize(14)
             .fontColor(Color.White)
             .backgroundColor($r('app.color.colorPrimary'))
@@ -109,7 +112,7 @@ export struct WelcomePageContent {
       .width('100%')
       .height('100%')
       .backgroundColor($r('app.color.colorBackground'))
-      .padding({ bottom: 24 })
+      .padding({ top: 36, bottom: 24 })
     }
     .hideTitleBar(true)
   }

@@ -11,14 +11,17 @@
                 "autoDesignWidth": true
             },
             "colorMode": "auto",
+            "isDynamic": true,
+            "transparencyEnabled": true,
             "isDefault": true,
             "updateEnabled": true,
             "scheduledUpdateTime": "10:30",
             "updateDuration": 1,
-            "defaultDimension": "4*2",
+            "defaultDimension": "2*2",
             "supportDimensions": [
                 "2*2",
-                "4*2",
+                "2*3",
+                "3*3",
                 "4*4"
             ]
         }
