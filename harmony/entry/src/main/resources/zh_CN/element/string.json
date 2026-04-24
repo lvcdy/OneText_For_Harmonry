@@ -163,6 +163,58 @@
         {
             "name": "chinese_type",
             "value": "中文类型"
+        },
+        {
+            "name": "welcome_title",
+            "value": "欢迎"
+        },
+        {
+            "name": "welcome_subtitle",
+            "value": "开始使用一言"
+        },
+        {
+            "name": "welcome_intro",
+            "value": "一言可以在桌面卡片显示句子，也可以保存截图并管理多个订阅源。"
+        },
+        {
+            "name": "welcome_step1_title",
+            "value": "1. 订阅源"
+        },
+        {
+            "name": "welcome_step1_desc",
+            "value": "你可以选择远程 JSON 源或 API 源，并在设置里随时切换。"
+        },
+        {
+            "name": "welcome_step2_title",
+            "value": "2. 小组件"
+        },
+        {
+            "name": "welcome_step2_desc",
+            "value": "把一言卡片添加到桌面，并在设置里调整它的样式。"
+        },
+        {
+            "name": "welcome_step3_title",
+            "value": "3. 截图"
+        },
+        {
+            "name": "welcome_step3_desc",
+            "value": "一键保存当前句子的图片，也可以轻触复制文本。"
+        },
+        {
+            "name": "welcome_skip",
+            "value": "跳过"
+        },
+        {
+            "name": "welcome_next",
+            "value": "下一步"
+        },
+        {
+            "name": "welcome_done",
+            "value": "欢迎流程已完成"
+        },
+        {
+            "name": "welcome_hint",
+            "value": "如果需要，可以在项目说明中重新查看这些内容。"
         }
     ]
 }

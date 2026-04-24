@@ -25,7 +25,7 @@
                 android:layout_height="wrap_content"
                 android:orientation="vertical">
 
-                <com.lz233.onetext.view.NiceImageView
+                <cn.lvcdy.onetext.view.NiceImageView
                     android:id="@+id/oauth_avatar_imageview"
                     android:layout_width="100dp"
                     android:layout_height="100dp"

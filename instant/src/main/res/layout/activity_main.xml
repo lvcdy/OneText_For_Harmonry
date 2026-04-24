@@ -21,7 +21,7 @@
             app:popupTheme="@style/AppTheme.PopupOverlay"
             app:titleTextColor="@color/colorText2">
 
-            <com.lz233.onetext.view.NiceImageView
+            <cn.lvcdy.onetext.view.NiceImageView
                 android:id="@+id/avatar_imageview"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"

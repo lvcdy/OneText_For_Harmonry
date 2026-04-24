@@ -1,5 +1,6 @@
 import { fileIo } from '@kit.CoreFileKit';
 import { common } from '@kit.AbilityKit';
+import { util } from '@kit.ArkTS';
 
 /**
  * 文件操作工具类 - 替代 Android FileUtil
@@ -35,7 +36,7 @@ export class FileUtil {
       const filePath = `${dirPath}/${fileName}`;
       const file = fileIo.openSync(filePath, fileIo.OpenMode.CREATE | fileIo.OpenMode.WRITE_ONLY | fileIo.OpenMode.TRUNC);
       const encoder = new util.TextEncoder();
-      const encoded = encoder.encodeInto(content);
+      const encoded = encoder.encode(content);
       fileIo.writeSync(file.fd, encoded.buffer);
       fileIo.closeSync(file);
       return true;
@@ -97,5 +98,3 @@ export class FileUtil {
     }
   }
 }
-
-import { util } from '@kit.ArkTS';

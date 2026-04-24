@@ -8,15 +8,15 @@
 
 ### Android 版本
 
-- **包名**: `com.lz233.onetext`
+- **包名**: `cn.lvcdy.onetext`
 - **最低 SDK**: 23（Android 6.0）
 - **目标 SDK**: 31（Android 12）
 - **开发语言**: Kotlin + Java 混合
 
 ### HarmonyOS 版本
 
-- **Bundle Name**: `com.lz233.onetext`
-- **编译 SDK**: HarmonyOS 6.0.0 (API 16)
+- **Bundle Name**: `cn.lvcdy.onetext`
+- **编译 SDK**: HarmonyOS 6.0.2 (API 22)
 - **兼容 SDK**: HarmonyOS 5.0.0 (API 12)
 - **开发语言**: ArkTS (TypeScript)
 - **UI 框架**: ArkUI 声明式
@@ -238,6 +238,7 @@ harmony/
         │   │   └── EntryFormAbility.ets   # 桌面卡片 FormExtensionAbility
         │   ├── pages/
         │   │   ├── Index.ets              # 主页面（一言展示、截图保存）
+        │   │   ├── WelcomePage.ets        # 首次启动引导页
         │   │   ├── SettingsPage.ets       # 设置页（界面、订阅源、小组件）
         │   │   ├── AboutPage.ets          # 关于页
         │   │   └── EditFeedPage.ets       # 订阅源编辑页
@@ -299,6 +300,8 @@ harmony/
 - ✅ 字体大小自定义
 - ✅ 文字复制到剪贴板
 - ✅ 设置页面（显示模式、订阅源、小组件配置）
+- ✅ 首次启动引导页
+- ✅ 小组件样式设置联动与刷新
 - ✅ 关于页面
 - ✅ 暗色/亮色模式
 - ✅ 多语言（中英文）
@@ -316,11 +319,11 @@ harmony/
 
 ### HarmonyOS 6 适配要点
 
-- **Navigation 导航模式**: 从 `router` 迁移到 `Navigation` + `NavDestination`，使用 `NavPathStack` 管理页面栈
+- **Navigation 导航模式**: 从 `router` 迁移到 `Navigation` + `NavDestination`，使用 `NavPathStack` 管理页面栈，符合华为开发者中心当前 Stage 模型 ArkUI 路由建议
 - **沉浸式状态栏**: 使用 `setWindowLayoutFullScreen` + `expandSafeArea` 实现全屏沉浸体验
 - **设备类型扩展**: 新增 `2in1` 设备类型，支持折叠屏和平板二合一形态
 - **卡片 formId 持久化**: 在 `onAddForm` 中保存 formId，`onRemoveForm` 中清理，确保重启后卡片可正常更新
-- **SDK 版本**: 编译 SDK 升级至 6.0.0 (API 16)，保持 5.0.0 (API 12) 向下兼容
+- **SDK 版本**: 编译 SDK 采用 HarmonyOS 6.0.2 (API 22)，保持 5.0.0 (API 12) 向下兼容
 - **构建工具**: hvigor 升级至 5.8.0
 
 ### 构建与运行
@@ -328,7 +331,7 @@ harmony/
 #### 环境要求
 
 - DevEco Studio 5.0+ (NEXT)
-- HarmonyOS SDK 6.0.0 (API 16)，向下兼容 API 12
+- HarmonyOS SDK 6.0.2 (API 22)，向下兼容 API 12
 - Node.js 16+
 - hvigor 5.8.0+
 

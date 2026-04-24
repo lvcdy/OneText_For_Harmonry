@@ -24,7 +24,7 @@
 -classobfuscationdictionary dictionary-moe.txt
 -packageobfuscationdictionary dictionary-moe.txt
 
--keep public class com.lz233.onetext.hook.InitHook
--assumenosideeffects class com.lz233.onetext.hook.utils.LogUtil {
+-keep public class cn.lvcdy.onetext.hook.InitHook
+-assumenosideeffects class cn.lvcdy.onetext.hook.utils.LogUtil {
  public static void _d*(...);
 }

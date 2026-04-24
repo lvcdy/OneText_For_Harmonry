@@ -163,6 +163,58 @@
         {
             "name": "chinese_type",
             "value": "Chinese Type"
+        },
+        {
+            "name": "welcome_title",
+            "value": "Welcome"
+        },
+        {
+            "name": "welcome_subtitle",
+            "value": "Get started with OneText"
+        },
+        {
+            "name": "welcome_intro",
+            "value": "OneText can show quotes on the home screen, save screenshots, and manage multiple feed sources."
+        },
+        {
+            "name": "welcome_step1_title",
+            "value": "1. Feed source"
+        },
+        {
+            "name": "welcome_step1_desc",
+            "value": "Choose a remote JSON feed or an API source, then switch between them from Settings."
+        },
+        {
+            "name": "welcome_step2_title",
+            "value": "2. Widget"
+        },
+        {
+            "name": "welcome_step2_desc",
+            "value": "Add the OneText widget to your home screen and customize its style in Settings."
+        },
+        {
+            "name": "welcome_step3_title",
+            "value": "3. Screenshot"
+        },
+        {
+            "name": "welcome_step3_desc",
+            "value": "Save the current quote as an image or copy the text with a single tap."
+        },
+        {
+            "name": "welcome_skip",
+            "value": "Skip"
+        },
+        {
+            "name": "welcome_next",
+            "value": "Next"
+        },
+        {
+            "name": "welcome_done",
+            "value": "Welcome complete"
+        },
+        {
+            "name": "welcome_hint",
+            "value": "You can reopen this information from the project README if needed."
         }
     ]
 }

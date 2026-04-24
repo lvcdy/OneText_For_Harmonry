@@ -1,4 +1,6 @@
 import { common } from '@kit.AbilityKit';
+import { formBindingData, formProvider } from '@kit.FormKit';
+import { preferences } from '@kit.ArkData';
 import { promptAction } from '@kit.ArkUI';
 import { PreferencesUtil } from '../common/PreferencesUtil';
 import { CoreUtil } from '../common/CoreUtil';
@@ -74,7 +76,26 @@ export struct SettingsPageContent {
       selected: item.index === index,
       index: item.index
     } as FeedItem));
+    await this.refreshWidgetForms();
     promptAction.showToast({ message: $r('app.string.succeed') });
+  }
+
+  private async refreshWidgetForms(): Promise<void> {
+    try {
+      const formPrefs = await preferences.getPreferences(this.context, 'form_ids');
+      const idsStr = (await formPrefs.get('form_id_list', '')) as string;
+      const ids = idsStr ? idsStr.split(',').filter((id: string) => id !== '') : [];
+      const formData = await this.coreUtil.buildWidgetFormData();
+      if (!formData || ids.length === 0) {
+        return;
+      }
+      const bindingData = formBindingData.createFormBindingData(formData);
+      for (const formId of ids) {
+        await formProvider.updateForm(formId, bindingData);
+      }
+    } catch (e) {
+      console.error('SettingsPage', `refreshWidgetForms error: ${JSON.stringify(e)}`);
+    }
   }
 
   build() {
@@ -226,16 +247,19 @@ export struct SettingsPageContent {
           this.SettingSwitch($r('app.string.widget_dark'), this.widgetDark, async (value: boolean) => {
             this.widgetDark = value;
             await this.prefs.putBoolean('widget_dark', value);
+            await this.refreshWidgetForms();
           })
 
           this.SettingSwitch($r('app.string.widget_shadow'), this.widgetShadow, async (value: boolean) => {
             this.widgetShadow = value;
             await this.prefs.putBoolean('widget_shadow', value);
+            await this.refreshWidgetForms();
           })
 
           this.SettingSwitch($r('app.string.widget_center'), this.widgetCenter, async (value: boolean) => {
             this.widgetCenter = value;
             await this.prefs.putBoolean('widget_center', value);
+            await this.refreshWidgetForms();
           })
 
           // 小组件刷新时间
@@ -258,6 +282,7 @@ export struct SettingsPageContent {
               .onChange(async (value: number) => {
                 this.widgetRefreshTime = value;
                 await this.prefs.putNumber('widget_refresh_time', value);
+                await this.refreshWidgetForms();
               })
             Text(`${Math.round(this.widgetRefreshTime)} MIN`)
               .fontSize(13)
@@ -295,7 +320,6 @@ export struct SettingsPageContent {
       .layoutWeight(1)
       .scrollBar(BarState.Off)
       .edgeEffect(EdgeEffect.Spring)
-      }
       .width('100%')
       .height('100%')
       .backgroundColor($r('app.color.colorBackground'))
@@ -329,4 +353,5 @@ export struct SettingsPageContent {
     .width('100%')
     .padding({ left: 16, right: 16, top: 10, bottom: 10 })
   }
+}
 }

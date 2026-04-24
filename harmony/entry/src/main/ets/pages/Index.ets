@@ -1,4 +1,5 @@
 import { common } from '@kit.AbilityKit';
+import { fileIo } from '@kit.CoreFileKit';
 import { pasteboard } from '@kit.BasicServicesKit';
 import { promptAction } from '@kit.ArkUI';
 import { CoreUtil } from '../common/CoreUtil';
@@ -9,6 +10,7 @@ import { photoAccessHelper } from '@kit.MediaLibraryKit';
 import { SettingsPageContent } from './SettingsPage';
 import { AboutPageContent } from './AboutPage';
 import { EditFeedPageContent } from './EditFeedPage';
+import { WelcomePageContent } from './WelcomePage';
 
 /**
  * 主页面 - 替代 Android MainActivity
@@ -34,6 +36,7 @@ struct Index {
   @State fromFontSize: number = 12;
   @State showSizeControls: boolean = false;
   @State sealVisible: boolean = false;
+  @State hasShownWelcome: boolean = false;
   @Provide('navPathStack') navPathStack: NavPathStack = new NavPathStack();
 
   private context: common.UIAbilityContext = getContext(this) as common.UIAbilityContext;
@@ -53,6 +56,14 @@ struct Index {
 
     // 加载一言
     await this.loadOneText(false);
+
+    if (!this.hasShownWelcome) {
+      const firstRun = await this.prefs.getBoolean('first_run', true);
+      if (firstRun) {
+        this.hasShownWelcome = true;
+        this.navPathStack.pushPathByName('WelcomePage', null);
+      }
+    }
   }
 
   /**
@@ -116,10 +127,9 @@ struct Index {
       const pixelMap = await componentSnapshot.get('onetext_card');
       const helper = photoAccessHelper.getPhotoAccessHelper(this.context);
       const uri = await helper.createAsset(photoAccessHelper.PhotoType.IMAGE, 'jpg');
-      const file = await import('@kit.CoreFileKit').then(m => m.fileIo.openSync(uri, 0x2));
       const packer = image.createImagePacker();
       const data = await packer.packing(pixelMap, { format: 'image/jpeg', quality: 100 });
-      const { fileIo } = await import('@kit.CoreFileKit');
+      const file = fileIo.openSync(uri, fileIo.OpenMode.WRITE_ONLY);
       fileIo.writeSync(file.fd, data);
       fileIo.closeSync(file);
       promptAction.showToast({ message: $r('app.string.save_succeed') });
@@ -378,6 +388,8 @@ struct Index {
       AboutPageContent()
     } else if (name === 'EditFeedPage') {
       EditFeedPageContent()
+    } else if (name === 'WelcomePage') {
+      WelcomePageContent()
     }
   }
 

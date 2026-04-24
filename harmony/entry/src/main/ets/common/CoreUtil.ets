@@ -14,12 +14,10 @@ export class CoreUtil {
 
   private context: common.UIAbilityContext;
   private prefs: PreferencesUtil;
-  private currentTimeMillis: number;
 
   constructor(context: common.UIAbilityContext) {
     this.context = context;
     this.prefs = PreferencesUtil.getInstance();
-    this.currentTimeMillis = Date.now();
   }
 
   /**
@@ -83,11 +81,12 @@ export class CoreUtil {
    * 判断是否应该更新一言
    */
   async ifOneTextShouldUpdate(ifFromWidget: boolean): Promise<boolean> {
+    const currentTimeMillis = Date.now();
     const widgetEnabled = await this.prefs.getBoolean('widget_enabled', false);
     if (ifFromWidget || !widgetEnabled) {
       const latestRefreshTime = await this.prefs.getNumber('onetext_latest_refresh_time', 0);
       const refreshTime = await this.prefs.getNumber('onetext_refresh_time', 30);
-      return ifFromWidget && ((this.currentTimeMillis - latestRefreshTime) >= (refreshTime * 60000));
+      return ifFromWidget && ((currentTimeMillis - latestRefreshTime) >= (refreshTime * 60000));
     }
     return false;
   }
@@ -96,7 +95,7 @@ export class CoreUtil {
    * 刷新最新更新时间
    */
   async refreshLatestRefreshTime(): Promise<void> {
-    await this.prefs.putNumber('onetext_latest_refresh_time', this.currentTimeMillis);
+    await this.prefs.putNumber('onetext_latest_refresh_time', Date.now());
   }
 
   /**
@@ -325,6 +324,7 @@ export class CoreUtil {
    * 运行一言更新检查
    */
   async runOneTextUpdate(): Promise<boolean> {
+    const currentTimeMillis = Date.now();
     const feedCode = await this.prefs.getNumber('feed_code', 0);
     const feedMap = await this.getFeedInformation(feedCode);
     if (feedMap.feed_type === 'remote') {
@@ -332,12 +332,12 @@ export class CoreUtil {
       if (autoUpdate) {
         const latestRefreshTime = await this.prefs.getNumber('feed_latest_refresh_time', 0);
         const refreshTime = await this.prefs.getNumber('feed_refresh_time', 1);
-        if ((this.currentTimeMillis - latestRefreshTime) > (refreshTime * 3600000)) {
+        if ((currentTimeMillis - latestRefreshTime) > (refreshTime * 3600000)) {
           try {
             const data = await HttpUtil.downloadText(feedMap.feed_url ?? '');
             const dir = `${this.context.filesDir}/OneText`;
             FileUtil.writeTextToFile(data, dir, 'OneText-Library.json');
-            await this.prefs.putNumber('feed_latest_refresh_time', this.currentTimeMillis);
+            await this.prefs.putNumber('feed_latest_refresh_time', currentTimeMillis);
             return true;
           } catch (e) {
             return false;
@@ -346,5 +346,40 @@ export class CoreUtil {
       }
     }
     return true;
+  }
+
+  /**
+   * 构建小组件可直接使用的数据，包含正文和样式设置
+   */
+  async buildWidgetFormData(): Promise<Record<string, string> | null> {
+    try {
+      const feedCode = await this.prefs.getNumber('feed_code', 0);
+      const feedMap = await this.getFeedInformation(feedCode);
+      const oneText = feedMap.feed_type === 'internet'
+        ? await this.getOneTextFromApi(feedMap)
+        : (await this.initOneText() ? await this.getOneText(true, true) : null);
+
+      if (!oneText) {
+        return null;
+      }
+
+      const widgetDark = await this.prefs.getBoolean('widget_dark', false);
+      const widgetShadow = await this.prefs.getBoolean('widget_shadow', true);
+      const widgetCenter = await this.prefs.getBoolean('widget_center', true);
+
+      return {
+        'text': oneText.text ?? '',
+        'by': oneText.by ?? '',
+        'from': oneText.from ?? '',
+        'time': oneText.time ?? '',
+        'uri': oneText.uri ?? '',
+        'widget_dark': String(widgetDark),
+        'widget_shadow': String(widgetShadow),
+        'widget_center': String(widgetCenter)
+      };
+    } catch (e) {
+      console.error('CoreUtil', `buildWidgetFormData error: ${JSON.stringify(e)}`);
+      return null;
+    }
   }
 }
