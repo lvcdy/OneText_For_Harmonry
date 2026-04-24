@@ -1,6 +1,6 @@
 {
   "app": {
-    "bundleName": "com.lz233.onetext",
+    "bundleName": "cn.lvcdy.onetext",
     "bundleType": "atomicService",
     "vendor": "lz233",
     "versionCode": 2000000,

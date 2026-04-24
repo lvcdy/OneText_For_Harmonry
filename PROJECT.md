@@ -16,8 +16,8 @@
 ### HarmonyOS 版本
 
 - **Bundle Name**: `cn.lvcdy.onetext`
-- **编译 SDK**: HarmonyOS 6.0.2 (API 22)
-- **兼容 SDK**: HarmonyOS 5.0.0 (API 12)
+- **编译 SDK**: HarmonyOS 6.1.0 (API 23)
+- **兼容 SDK**: HarmonyOS 6.1.0 (API 23)
 - **开发语言**: ArkTS (TypeScript)
 - **UI 框架**: ArkUI 声明式
 - **导航模式**: Navigation + NavDestination（HarmonyOS 6 标准）
@@ -323,17 +323,17 @@ harmony/
 - **沉浸式状态栏**: 使用 `setWindowLayoutFullScreen` + `expandSafeArea` 实现全屏沉浸体验
 - **设备类型扩展**: 新增 `2in1` 设备类型，支持折叠屏和平板二合一形态
 - **卡片 formId 持久化**: 在 `onAddForm` 中保存 formId，`onRemoveForm` 中清理，确保重启后卡片可正常更新
-- **SDK 版本**: 编译 SDK 采用 HarmonyOS 6.0.2 (API 22)，保持 5.0.0 (API 12) 向下兼容
-- **构建工具**: hvigor 升级至 5.8.0
+- **SDK 版本**: 编译 SDK 采用 HarmonyOS 6.1.0 (API 23)，兼容 SDK 同步到 6.1.0 (API 23)
+- **构建工具**: hvigor 升级至 6.1.0
 
 ### 构建与运行
 
 #### 环境要求
 
 - DevEco Studio 5.0+ (NEXT)
-- HarmonyOS SDK 6.0.2 (API 22)，向下兼容 API 12
+- HarmonyOS SDK 6.1.0 (API 23)
 - Node.js 16+
-- hvigor 5.8.0+
+- hvigor 6.1.0+
 
 #### 构建步骤
 
@@ -341,3 +341,8 @@ harmony/
 2. 等待依赖同步完成
 3. 连接鸿蒙设备或启动模拟器
 4. 点击 Run 按钮编译运行
+
+#### 依赖源说明
+
+- 如果 hvigor 在拉取 `@ohos/hvigor-ohos-plugin` 时走到了错误的镜像源，请优先检查 `harmony/.npmrc`。
+- 本项目默认把 npm registry 指向 `https://repo.huaweicloud.com/repository/npm/`，用于避免 `npmmirror` 对 HarmonyOS 相关包返回 404。
