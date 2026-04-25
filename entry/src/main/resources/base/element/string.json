@@ -2,23 +2,19 @@
     "string": [
         {
             "name": "module_desc",
-            "value": "OneText entry module"
+            "value": "Hitokoto entry module"
         },
         {
             "name": "EntryAbility_desc",
-            "value": "OneText Main Ability"
+            "value": "Hitokoto Main Ability"
         },
         {
             "name": "EntryAbility_label",
-            "value": "OneText"
-        },
-        {
-            "name": "app_name",
-            "value": "OneText"
+            "value": "Hitokoto"
         },
         {
             "name": "widget_display_name",
-            "value": "OneText Widget"
+            "value": "Hitokoto Widget"
         },
         {
             "name": "widget_desc",
@@ -50,7 +46,7 @@
         },
         {
             "name": "permission_write_imagevideo_reason",
-            "value": "Allow OneText to save quote screenshots to Photos."
+            "value": "Allow Hitokoto to save quote screenshots to Photos."
         },
         {
             "name": "refresh_button",
@@ -110,7 +106,7 @@
         },
         {
             "name": "onetext_text_size",
-            "value": "OneText Size:"
+            "value": "Hitokoto Size:"
         },
         {
             "name": "onetext_by_size",
@@ -166,7 +162,7 @@
         },
         {
             "name": "about_introduction",
-            "value": "OneText is a neat little application that can display some custom sentences through widgets on the launcher. You can also generate screenshots of sentences in the app and save or share them."
+            "value": "Hitokoto is a neat little application that can display some custom sentences through widgets on the launcher. You can also generate screenshots of sentences in the app and save or share them."
         },
         {
             "name": "interface_text",
@@ -238,11 +234,11 @@
         },
         {
             "name": "welcome_subtitle",
-            "value": "Get started with OneText"
+            "value": "Get started with Hitokoto"
         },
         {
             "name": "welcome_intro",
-            "value": "OneText can show quotes on the home screen, save screenshots, and manage multiple feed sources."
+            "value": "Hitokoto can show quotes on the home screen, save screenshots, and manage multiple feed sources."
         },
         {
             "name": "welcome_step1_title",
@@ -258,7 +254,7 @@
         },
         {
             "name": "welcome_step2_desc",
-            "value": "Add the OneText widget to your home screen and customize its style in Settings."
+            "value": "Add the Hitokoto widget to your home screen and customize its style in Settings."
         },
         {
             "name": "welcome_step3_title",

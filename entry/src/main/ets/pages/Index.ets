@@ -23,9 +23,12 @@ interface HuaweiAccountProfile {
   avatar: string;
 }
 
+const LOGGED_IN_AVATAR_SIZE: number = 112;
+const LOGGED_IN_AVATAR_RADIUS: number = LOGGED_IN_AVATAR_SIZE / 2;
+
 /**
  * 主页面 - 替代 Android MainActivity
- * 展示一言内容，支持刷新、保存截图、分享等功能
+ * 展示 Hitokoto 内容，支持刷新、保存截图、分享等功能
  * HarmonyOS 6: 使用 Navigation + NavDestination 导航模式
  */
 @Entry
@@ -89,7 +92,7 @@ struct Index {
     // 初始化订阅源
     await this.coreUtil.initFeedFile();
 
-    // 加载一言
+    // 加载 Hitokoto
     await this.loadOneText(false);
 
     if (!this.hasShownWelcome) {
@@ -271,7 +274,7 @@ struct Index {
   }
 
   /**
-   * 加载一言数据
+   * 加载 Hitokoto 数据
    */
   private async loadOneText(forceRefresh: boolean): Promise<void> {
     this.isLoading = true;
@@ -425,7 +428,7 @@ struct Index {
       Refresh({ refreshing: $$this.isRefreshing, offset: 72 }) {
         Scroll() {
           Column() {
-            // 一言卡片
+            // Hitokoto 卡片
             Column() {
               Stack() {
                 Column() {
@@ -567,7 +570,7 @@ struct Index {
     Column() {
       Row() {
         Column() {
-          Text('OneText')
+          Text('Hitokoto')
             .fontSize(30)
             .fontWeight(FontWeight.Bold)
             .fontColor($r('app.color.colorText1'))
@@ -632,16 +635,16 @@ struct Index {
       if (this.hasHuaweiAccount) {
         if (this.huaweiAccountAvatar.length > 0) {
           Image(this.huaweiAccountAvatar)
-            .width(96)
-            .height(96)
-            .borderRadius(48)
+            .width(LOGGED_IN_AVATAR_SIZE)
+            .height(LOGGED_IN_AVATAR_SIZE)
+            .borderRadius(LOGGED_IN_AVATAR_RADIUS)
             .objectFit(ImageFit.Cover)
             .backgroundColor('#EEF3FF')
         } else {
           Image($r('app.media.app_icon'))
-            .width(96)
-            .height(96)
-            .borderRadius(48)
+            .width(LOGGED_IN_AVATAR_SIZE)
+            .height(LOGGED_IN_AVATAR_SIZE)
+            .borderRadius(LOGGED_IN_AVATAR_RADIUS)
             .backgroundColor('#EEF3FF')
             .padding(12)
         }

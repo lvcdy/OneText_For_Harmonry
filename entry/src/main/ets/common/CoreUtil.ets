@@ -6,7 +6,7 @@ import { HttpUtil } from './HttpUtil';
 
 /**
  * 核心业务逻辑工具类 - 替代 Android CoreUtil
- * 负责一言数据的读取、随机选取、订阅源管理等
+ * 负责 Hitokoto 数据的读取、随机选取、订阅源管理等
  */
 export class CoreUtil {
   static readonly TEXT_REPLACE_HOLDER: string = '@@';
@@ -21,14 +21,14 @@ export class CoreUtil {
   }
 
   /**
-   * 检查一言数据文件是否存在
+   * 检查 Hitokoto 数据文件是否存在
    */
   private ifHaveOneTextFiles(): boolean {
     return FileUtil.isFile(`${this.context.filesDir}/OneText/OneText-Library.json`);
   }
 
   /**
-   * 获取一言数据数组（JSON 字符串）
+   * 获取 Hitokoto 数据数组（JSON 字符串）
    */
   private async getOneTextArray(): Promise<string> {
     const feedCode = await this.prefs.getNumber('feed_code', 0);
@@ -46,7 +46,7 @@ export class CoreUtil {
   }
 
   /**
-   * 获取一言编号（随机或缓存）
+   * 获取 Hitokoto 编号（随机或缓存）
    */
   private async getOneTextCode(forceRefresh: boolean, ifFromWidget: boolean): Promise<number> {
     if (forceRefresh) {
@@ -61,7 +61,7 @@ export class CoreUtil {
   }
 
   /**
-   * 生成新的随机一言编号
+   * 生成新的随机 Hitokoto 编号
    */
   private async generateNewOneTextCode(): Promise<number> {
     const arrayStr = await this.getOneTextArray();
@@ -78,7 +78,7 @@ export class CoreUtil {
   }
 
   /**
-   * 判断是否应该更新一言
+   * 判断是否应该更新 Hitokoto
    */
   async ifOneTextShouldUpdate(ifFromWidget: boolean): Promise<boolean> {
     const currentTimeMillis = Date.now();
@@ -99,7 +99,7 @@ export class CoreUtil {
   }
 
   /**
-   * 获取一言数据
+   * 获取 Hitokoto 数据
    */
   async getOneText(forceRefresh: boolean, ifFromWidget: boolean): Promise<OneTextItem> {
     const feedCode = await this.prefs.getNumber('feed_code', 0);
@@ -157,7 +157,7 @@ export class CoreUtil {
   }
 
   /**
-   * 转换一言数据（包括简繁转换）
+   * 转换 Hitokoto 数据（包括简繁转换）
    */
   convertOneText(jsonObj: Record<string, string>, feedMap: FeedConfig): OneTextItem {
     // 鸿蒙系统暂无内置简繁转换库，使用原始文本
@@ -208,7 +208,7 @@ export class CoreUtil {
   }
 
   /**
-   * 初始化一言（下载远程数据或读取本地文件）
+   * 初始化 Hitokoto（下载远程数据或读取本地文件）
    */
   async initOneText(): Promise<boolean> {
     const feedCode = await this.prefs.getNumber('feed_code', 0);
@@ -234,7 +234,7 @@ export class CoreUtil {
   }
 
   /**
-   * 通过 API 获取一言（internet 类型订阅源）
+   * 通过 API 获取 Hitokoto（internet 类型订阅源）
    */
   async getOneTextFromApi(feedMap: FeedConfig): Promise<OneTextItem> {
     try {
@@ -370,7 +370,7 @@ export class CoreUtil {
   }
 
   /**
-   * 运行一言更新检查
+   * 运行 Hitokoto 更新检查
    */
   async runOneTextUpdate(): Promise<boolean> {
     const currentTimeMillis = Date.now();

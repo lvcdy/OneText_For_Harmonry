@@ -1,9 +1,9 @@
 {
   "app": {
-    "bundleName": "cn.lvcdy.onetext",
-    "vendor": "lz233",
+    "bundleName": "cn.lvcdy.hitokoto",
+    "vendor": "lvcdy",
     "versionCode": 2000000,
-    "versionName": "3.0.0",
+    "versionName": "1.0.0",
     "icon": "$media:app_icon",
     "label": "$string:app_name"
   }

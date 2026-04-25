@@ -68,7 +68,7 @@ export struct WelcomePageContent {
         .backgroundColor('#EEF3FF')
 
       Column() {
-        Text('OneText')
+        Text('Hitokoto')
           .fontSize(28)
           .fontWeight(FontWeight.Bold)
           .fontColor($r('app.color.colorText1'))
@@ -131,7 +131,7 @@ export struct WelcomePageContent {
             .width('100%')
             .textAlign(TextAlign.Center)
 
-          Text(this.currentStep === 0 ? '主页 · 一言' : (this.currentStep === 1 ? '小组件 · 桌面卡片' : '字体 · 订阅源'))
+          Text(this.currentStep === 0 ? '主页 · Hitokoto' : (this.currentStep === 1 ? '小组件 · 桌面卡片' : '字体 · 订阅源'))
             .fontSize(13)
             .fontColor($r('app.color.colorText4'))
             .margin({ top: 14 })

@@ -1,7 +1,7 @@
 {
     "forms": [
         {
-            "name": "OneTextWidget",
+            "name": "HitokotoWidget",
             "displayName": "$string:widget_display_name",
             "description": "$string:widget_desc",
             "src": "./ets/widget/pages/WidgetCard.ets",

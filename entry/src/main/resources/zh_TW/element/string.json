@@ -2,23 +2,19 @@
     "string": [
         {
             "name": "module_desc",
-            "value": "一言主模組"
+            "value": "Hitokoto 主模組"
         },
         {
             "name": "EntryAbility_desc",
-            "value": "一言主入口"
+            "value": "Hitokoto 主入口"
         },
         {
             "name": "EntryAbility_label",
-            "value": "一言"
-        },
-        {
-            "name": "app_name",
-            "value": "一言"
+            "value": "Hitokoto"
         },
         {
             "name": "widget_display_name",
-            "value": "一言小工具"
+            "value": "Hitokoto 小工具"
         },
         {
             "name": "widget_desc",
@@ -50,7 +46,7 @@
         },
         {
             "name": "permission_write_imagevideo_reason",
-            "value": "允許一言將句子截圖儲存到圖庫。"
+            "value": "允許 Hitokoto 將句子截圖儲存到圖庫。"
         },
         {
             "name": "refresh_button",
@@ -110,7 +106,7 @@
         },
         {
             "name": "onetext_text_size",
-            "value": "一言大小："
+            "value": "Hitokoto 大小："
         },
         {
             "name": "onetext_by_size",
@@ -166,7 +162,7 @@
         },
         {
             "name": "about_introduction",
-            "value": "一言是一個簡潔的小應用，能在啟動器上透過小工具顯示一些自訂句子。你也可以在應用中產生句子截圖，並儲存或分享。"
+            "value": "Hitokoto 是一個簡潔的小應用，能在啟動器上透過小工具顯示一些自訂句子。你也可以在應用中產生句子截圖，並儲存或分享。"
         },
         {
             "name": "interface_text",
@@ -238,11 +234,11 @@
         },
         {
             "name": "welcome_subtitle",
-            "value": "開始使用一言"
+            "value": "開始使用 Hitokoto"
         },
         {
             "name": "welcome_intro",
-            "value": "一言可以在桌面卡片顯示句子，也可以儲存截圖並管理多個訂閱源。"
+            "value": "Hitokoto 可以在桌面卡片顯示句子，也可以儲存截圖並管理多個訂閱源。"
         },
         {
             "name": "welcome_step1_title",
@@ -258,7 +254,7 @@
         },
         {
             "name": "welcome_step2_desc",
-            "value": "把一言卡片新增到桌面，並在設定裡調整它的樣式。"
+            "value": "把 Hitokoto 卡片新增到桌面，並在設定裡調整它的樣式。"
         },
         {
             "name": "welcome_step3_title",

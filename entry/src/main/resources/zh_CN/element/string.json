@@ -2,23 +2,19 @@
     "string": [
         {
             "name": "module_desc",
-            "value": "一言主模块"
+            "value": "Hitokoto 主模块"
         },
         {
             "name": "EntryAbility_desc",
-            "value": "一言主入口"
+            "value": "Hitokoto 主入口"
         },
         {
             "name": "EntryAbility_label",
-            "value": "一言"
-        },
-        {
-            "name": "app_name",
-            "value": "一言"
+            "value": "Hitokoto"
         },
         {
             "name": "widget_display_name",
-            "value": "一言小组件"
+            "value": "Hitokoto 小组件"
         },
         {
             "name": "widget_desc",
@@ -50,7 +46,7 @@
         },
         {
             "name": "permission_write_imagevideo_reason",
-            "value": "允许一言将句子截图保存到图库。"
+            "value": "允许 Hitokoto 将句子截图保存到图库。"
         },
         {
             "name": "refresh_button",
@@ -110,7 +106,7 @@
         },
         {
             "name": "onetext_text_size",
-            "value": "一言大小："
+            "value": "Hitokoto 大小："
         },
         {
             "name": "onetext_by_size",
@@ -166,7 +162,7 @@
         },
         {
             "name": "about_introduction",
-            "value": "一言是一个简洁的小应用，能在启动器上通过小组件显示一些自定义的句子。你还可以在应用中生成句子截图，并保存或分享。"
+            "value": "Hitokoto 是一个简洁的小应用，能在启动器上通过小组件显示一些自定义的句子。你还可以在应用中生成句子截图，并保存或分享。"
         },
         {
             "name": "interface_text",
@@ -238,11 +234,11 @@
         },
         {
             "name": "welcome_subtitle",
-            "value": "开始使用一言"
+            "value": "开始使用 Hitokoto"
         },
         {
             "name": "welcome_intro",
-            "value": "一言可以在桌面卡片显示句子，也可以保存截图并管理多个订阅源。"
+            "value": "Hitokoto 可以在桌面卡片显示句子，也可以保存截图并管理多个订阅源。"
         },
         {
             "name": "welcome_step1_title",
@@ -258,7 +254,7 @@
         },
         {
             "name": "welcome_step2_desc",
-            "value": "把一言卡片添加到桌面，并在设置里调整它的样式。"
+            "value": "把 Hitokoto 卡片添加到桌面，并在设置里调整它的样式。"
         },
         {
             "name": "welcome_step3_title",

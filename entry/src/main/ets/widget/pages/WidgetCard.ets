@@ -1,10 +1,11 @@
 /**
  * 桌面小组件卡片 - 替代 Android WidgetProvider + widget_layout.xml
- * 显示一言文字和作者
+ * 显示 Hitokoto 文字和作者
  * HarmonyOS 6: 支持卡片刷新事件和 formId 持久化
  */
 
 const localStorage = new LocalStorage();
+const OPAQUE_ANCHOR_HEIGHT: string = '12%';
 
 @Entry(localStorage)
 @Component
@@ -25,6 +26,10 @@ struct WidgetCard {
 
   private getSecondaryTextColor(): string {
     return this.isEnabled(this.widgetDark) ? '#434343' : '#FFFFFF';
+  }
+
+  private getOpaqueAnchorColor(): string {
+    return this.isEnabled(this.widgetDark) ? '#1C1C1C' : '#FFFFFF';
   }
 
   @Builder
@@ -63,16 +68,28 @@ struct WidgetCard {
 
   build() {
     Column() {
-      if (this.isEnabled(this.widgetCenter)) {
-        this.QuoteText(TextAlign.Center)
-      } else {
-        this.QuoteText(TextAlign.Start)
-        this.AuthorText()
+      Column() {
+        if (this.isEnabled(this.widgetCenter)) {
+          this.QuoteText(TextAlign.Center)
+        } else {
+          this.QuoteText(TextAlign.Start)
+          this.AuthorText()
+        }
       }
+      .width('100%')
+      .layoutWeight(1)
+      .justifyContent(FlexAlign.Center)
+      .alignItems(HorizontalAlign.Center)
+
+      Row()
+        .width('100%')
+        // Keep the transparent widget's opaque area above the 10% review threshold.
+        .height(OPAQUE_ANCHOR_HEIGHT)
+        .backgroundColor(this.getOpaqueAnchorColor())
     }
     .width('100%')
     .height('100%')
-    .justifyContent(FlexAlign.Center)
+    .justifyContent(FlexAlign.SpaceBetween)
     .alignItems(HorizontalAlign.Center)
     .padding(0)
     .backgroundColor(Color.Transparent)

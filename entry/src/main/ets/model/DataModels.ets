@@ -1,5 +1,5 @@
 /**
- * OneText 数据模型 - 一言条目
+ * Hitokoto 数据模型 - Hitokoto 条目
  */
 export interface OneTextItem {
   text: string;

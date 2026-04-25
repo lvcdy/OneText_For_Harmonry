@@ -1,3 +1,5 @@
+import { common, Want } from '@kit.AbilityKit';
+import { promptAction } from '@kit.ArkUI';
 import { UiStyle } from '../common/UiStyle';
 
 /**
@@ -7,6 +9,21 @@ import { UiStyle } from '../common/UiStyle';
 @Component
 export struct AboutPageContent {
   @Consume('navPathStack') navPathStack: NavPathStack;
+  private context: common.UIAbilityContext = getContext(this) as common.UIAbilityContext;
+
+  private async openLink(url: string): Promise<void> {
+    const want: Want = {
+      action: 'ohos.want.action.viewData',
+      uri: url
+    };
+
+    try {
+      await this.context.startAbility(want);
+    } catch (e) {
+      console.error('AboutPage', `openLink error: ${JSON.stringify(e)}`);
+      promptAction.showToast({ message: '无法打开链接' });
+    }
+  }
 
   build() {
     NavDestination() {
@@ -41,13 +58,13 @@ export struct AboutPageContent {
               .height(80)
               .borderRadius(16)
 
-            Text('OneText')
+            Text('Hitokoto')
               .fontSize(24)
               .fontWeight(FontWeight.Bold)
               .fontColor($r('app.color.colorText1'))
               .margin({ top: 12 })
 
-            Text('一言')
+            Text('一句话')
               .fontSize(14)
               .fontColor($r('app.color.colorText3'))
               .margin({ top: 4 })
@@ -84,7 +101,7 @@ export struct AboutPageContent {
               .width('100%')
               .padding({ bottom: 8 })
 
-            Text('OneText 遵循 LGPL v3 许可证，在这个基础上你可以修改它。')
+            Text('Hitokoto 遵循 LGPL v3 许可证，在这个基础上你可以修改它。')
               .fontSize(14)
               .fontColor($r('app.color.colorText2'))
               .lineHeight(22)
@@ -131,9 +148,8 @@ export struct AboutPageContent {
               .width('100%')
               .padding({ bottom: 8 })
 
-            this.LinkItem('项目主页', 'https://github.com/lz233/OneText_For_Android')
-            this.LinkItem('核心库', 'https://github.com/lz233/OneText-Library')
-            this.LinkItem('Telegram 群组', 'https://t.me/OneTextProject')
+            this.LinkItem('项目主页', 'https://github.com/lvcdy/OneText_For_Harmonry')
+            this.LinkItem('使用API地址', 'https://v1.hitokoto.cn')
           }
           .width('100%')
           .padding(20)
@@ -180,19 +196,22 @@ export struct AboutPageContent {
 
   @Builder
   LinkItem(title: string, url: string) {
-    Row() {
+    Column() {
       Text(title)
         .fontSize(14)
         .fontColor($r('app.color.colorText1'))
-      Blank()
+
       Text(url)
-        .fontSize(11)
-        .fontColor($r('app.color.colorText4'))
-        .maxLines(1)
-        .textOverflow({ overflow: TextOverflow.Ellipsis })
-        .constraintSize({ maxWidth: 200 })
+        .fontSize(13)
+        .fontColor($r('app.color.colorPrimary'))
+        .width('100%')
+        .margin({ top: 6 })
     }
     .width('100%')
-    .padding({ top: 8, bottom: 8 })
+    .alignItems(HorizontalAlign.Start)
+    .padding({ top: 10, bottom: 10 })
+    .onClick(async () => {
+      await this.openLink(url);
+    })
   }
 }
