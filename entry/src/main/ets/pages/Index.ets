@@ -1,15 +1,17 @@
-import { common } from '@kit.AbilityKit';
+import { abilityAccessCtrl, common, Permissions } from '@kit.AbilityKit';
 import { fileIo } from '@kit.CoreFileKit';
 import { pasteboard } from '@kit.BasicServicesKit';
 import { font, promptAction } from '@kit.ArkUI';
-import { util } from '@kit.ArkTS';
-import { authentication } from '@kit.AccountKit';
-import { BlurStrategy, HdsTabs, hdsMaterial } from '@kit.UIDesignKit';
+import { HdsTabs, hdsMaterial } from '@kit.UIDesignKit';
 import { image } from '@kit.ImageKit';
 import { CoreUtil } from '../common/CoreUtil';
 import { PreferencesUtil } from '../common/PreferencesUtil';
 import { UiStyle } from '../common/UiStyle';
-import { OneTextItem, FeedConfig } from '../model/DataModels';
+import { AppBackgroundLayer, AppBackgroundUtil } from '../common/AppBackgroundUtil';
+import { FormUtil } from '../common/FormUtil';
+import { GripUtil } from '../common/GripUtil';
+import { HuaweiAccountUtil } from '../common/HuaweiAccountUtil';
+import { OneTextItem } from '../model/DataModels';
 import { componentSnapshot } from '@kit.ArkUI';
 import { photoAccessHelper } from '@kit.MediaLibraryKit';
 import { motion } from '@kit.MultimodalAwarenessKit';
@@ -18,13 +20,26 @@ import { AboutPageContent } from './AboutPage';
 import { EditFeedPageContent } from './EditFeedPage';
 import { WelcomePageContent } from './WelcomePage';
 
-interface HuaweiAccountProfile {
-  name: string;
-  avatar: string;
-}
-
-const LOGGED_IN_AVATAR_SIZE: number = 112;
+const LOGGED_IN_AVATAR_SIZE: number = 152;
 const LOGGED_IN_AVATAR_RADIUS: number = LOGGED_IN_AVATAR_SIZE / 2;
+const RESPONSIVE_WIDE_WIDTH: number = 720;
+const HOME_CONTENT_MAX_WIDTH_COMPACT: number = 560;
+const HOME_CONTENT_MAX_WIDTH_WIDE: number = 980;
+const HOME_QUOTE_SPAN_WIDE: number = 58;
+const HOME_ACTION_SPAN_WIDE: number = 42;
+const MINE_ACCOUNT_HEADER_HEIGHT: number = 198;
+const MINE_ACCOUNT_HEADER_OFFSET_Y: number = 0;
+const MINE_PAGE_SIDE: number = 0;
+const MINE_PAGE_TOP: number = 0;
+const MINE_PANE_MAX_WIDTH_COMPACT: number = 440;
+const MINE_PANE_MAX_WIDTH_WIDE: number = 560;
+const MINE_PANE_MIN_HEIGHT: number = 686;
+const MINE_PANE_OFFSET_Y: number = -60;
+const MINE_FONT_CARD_TOP: number = 42;
+const MINE_FONT_CARD_OFFSET_Y: number = 0;
+const MINE_SETTINGS_CARD_TOP: number = 14;
+const MINE_SETTINGS_CARD_OFFSET_Y: number = 0;
+const WRITE_IMAGEVIDEO_PERMISSION: Permissions = 'ohos.permission.WRITE_IMAGEVIDEO';
 
 /**
  * 主页面 - 替代 Android MainActivity
@@ -48,7 +63,6 @@ struct Index {
   @State byFontSize: number = 18;
   @State timeFontSize: number = 15;
   @State fromFontSize: number = 15;
-  @State showSizeControls: boolean = false;
   @State sealVisible: boolean = false;
   @State isLeftHandHeld: boolean = false;
   @State isRefreshing: boolean = false;
@@ -56,9 +70,11 @@ struct Index {
   @State selectedTabIndex: number = 0;
   @State fontStyleIndex: number = 0;
   @State huaweiAccountName: string = '使用华为账号登录';
-  @State huaweiAccountHint: string = '点击获取 ID Token';
   @State huaweiAccountAvatar: string = '';
   @State hasHuaweiAccount: boolean = false;
+  @State adaptiveGripEnabled: boolean = true;
+  @State pageWidth: number = 0;
+  @StorageLink('appBackgroundUri') appBackgroundUri: string = '';
   @Provide('navPathStack') navPathStack: NavPathStack = new NavPathStack();
 
   private context: common.UIAbilityContext = getContext(this) as common.UIAbilityContext;
@@ -70,43 +86,90 @@ struct Index {
   private fontDescriptions: string[] = ['恢复系统字体', '仓耳今楷 01-W04', '霞鹜文楷 Regular'];
   private isPullRefreshRunning: boolean = false;
   private holdingHandCallback = (status: motion.HoldingHandStatus): void => {
-    if (status === motion.HoldingHandStatus.LEFT_HAND_HELD) {
-      this.updateGripSide(true);
-    } else if (status === motion.HoldingHandStatus.RIGHT_HAND_HELD || status === motion.HoldingHandStatus.BOTH_HANDS_HELD) {
-      this.updateGripSide(false);
+    const leftHandHeld = GripUtil.getLeftHandHeld(status);
+    if (leftHandHeld !== null) {
+      this.updateGripSide(leftHandHeld);
     }
   };
 
+  private isWideLayout(): boolean {
+    return this.pageWidth >= RESPONSIVE_WIDE_WIDTH;
+  }
+
+  private getHomeContentMaxWidth(): number {
+    return this.isWideLayout() ? HOME_CONTENT_MAX_WIDTH_WIDE : HOME_CONTENT_MAX_WIDTH_COMPACT;
+  }
+
+  private getMinePaneMaxWidth(): number {
+    return this.isWideLayout() ? MINE_PANE_MAX_WIDTH_WIDE : MINE_PANE_MAX_WIDTH_COMPACT;
+  }
+
+  private getGlassCardColor(): ResourceColor {
+    return UiStyle.GLASS_CARD_BG;
+  }
+
+  private getGlassCardBorder(): ResourceColor {
+    return UiStyle.GLASS_CARD_BORDER;
+  }
+
+  private getGlassShadowColor(): ResourceColor {
+    return UiStyle.GLASS_CARD_SHADOW;
+  }
+
+  private getGlassControlColor(): ResourceColor {
+    return UiStyle.GLASS_CONTROL_BG;
+  }
+
+  private getGlassSelectedColor(): ResourceColor {
+    return UiStyle.GLASS_SELECTED_BG;
+  }
+
   async aboutToAppear(): Promise<void> {
-    this.registerCustomFonts();
+    try {
+      this.registerCustomFonts();
 
-    // 加载偏好设置
-    this.textFontSize = await this.prefs.getNumber('onetext_text_size', 23);
-    this.byFontSize = await this.prefs.getNumber('onetext_by_size', 18);
-    this.timeFontSize = await this.prefs.getNumber('onetext_time_size', 15);
-    this.fromFontSize = await this.prefs.getNumber('onetext_from_size', 15);
-    this.fontStyleIndex = Math.min(await this.prefs.getNumber('onetext_font_style', 0), this.fontStyles.length - 1);
-    this.sealVisible = await this.prefs.getBoolean('seal_enabled', false);
-    await this.loadHuaweiAccount();
-
-    // 初始化订阅源
-    await this.coreUtil.initFeedFile();
-
-    // 加载 Hitokoto
-    await this.loadOneText(false);
-
-    if (!this.hasShownWelcome) {
-      const firstRun = await this.prefs.getBoolean('first_run', true);
-      if (firstRun) {
-        this.hasShownWelcome = true;
-        this.navPathStack.pushPathByName('WelcomePage', null);
+      // 加载偏好设置
+      this.textFontSize = await this.prefs.getNumber('onetext_text_size', 23);
+      this.byFontSize = await this.prefs.getNumber('onetext_by_size', 18);
+      this.timeFontSize = await this.prefs.getNumber('onetext_time_size', 15);
+      this.fromFontSize = await this.prefs.getNumber('onetext_from_size', 15);
+      this.fontStyleIndex = Math.min(await this.prefs.getNumber('onetext_font_style', 0), this.fontStyles.length - 1);
+      this.sealVisible = await this.prefs.getBoolean('seal_enabled', false);
+      this.adaptiveGripEnabled = await this.prefs.getBoolean('adaptive_grip_enabled', true);
+      this.appBackgroundUri = await AppBackgroundUtil.getBackgroundUri(this.prefs);
+      if (!this.adaptiveGripEnabled) {
+        this.applyGripSide(false);
       }
-    }
+      await this.loadHuaweiAccount();
 
-    this.startGripAwareness();
+      // 初始化订阅源
+      await this.coreUtil.initFeedFile();
+
+      // 加载 Hitokoto
+      await this.loadOneText(false);
+
+      if (!this.hasShownWelcome) {
+        const firstRun = await this.prefs.getBoolean('first_run', true);
+        if (firstRun) {
+          this.hasShownWelcome = true;
+          this.navPathStack.pushPathByName('WelcomePage', null);
+        }
+      }
+
+      if (this.adaptiveGripEnabled) {
+        this.startGripAwareness();
+      }
+    } catch (e) {
+      this.isLoading = false;
+      console.error('Index', `aboutToAppear skipped: ${JSON.stringify(e)}`);
+    }
   }
 
   aboutToDisappear(): void {
+    this.stopGripAwareness();
+  }
+
+  private stopGripAwareness(): void {
     try {
       motion.off('holdingHandChanged', this.holdingHandCallback);
     } catch (e) {
@@ -115,6 +178,7 @@ struct Index {
   }
 
   private startGripAwareness(): void {
+    this.stopGripAwareness();
     try {
       motion.on('holdingHandChanged', this.holdingHandCallback);
     } catch (e) {
@@ -123,6 +187,13 @@ struct Index {
   }
 
   private updateGripSide(leftHandHeld: boolean): void {
+    if (!this.adaptiveGripEnabled) {
+      return;
+    }
+    this.applyGripSide(leftHandHeld);
+  }
+
+  private applyGripSide(leftHandHeld: boolean): void {
     if (this.isLeftHandHeld === leftHandHeld) {
       return;
     }
@@ -164,63 +235,55 @@ struct Index {
     }
   }
 
+  private showToast(message: ResourceStr | string): void {
+    try {
+      promptAction.showToast({ message: message });
+    } catch (e) {
+      console.warn('Index', `showToast skipped: ${JSON.stringify(e)}`);
+    }
+  }
+
   private async loadHuaweiAccount(): Promise<void> {
     const idToken = await this.prefs.getString('huawei_id_token', '');
     const isLoggedIn = await this.prefs.getBoolean('huawei_account_logged_in', false);
     if (idToken.length === 0 && !isLoggedIn) {
-      this.huaweiAccountName = '华为账号用户';
+      this.huaweiAccountName = HuaweiAccountUtil.FALLBACK_NAME;
       this.huaweiAccountAvatar = '';
-      this.huaweiAccountHint = '';
       this.hasHuaweiAccount = false;
       return;
     }
-    const profile = this.parseHuaweiIdToken(idToken);
+    const profile = HuaweiAccountUtil.parseIdToken(idToken);
     const savedName = await this.prefs.getString('huawei_account_name', '');
     const savedAvatar = await this.prefs.getString('huawei_account_avatar', '');
-    this.huaweiAccountName = savedName.length > 0 ? savedName : (profile.name.length > 0 ? profile.name : '华为账号用户');
+    this.huaweiAccountName = savedName.length > 0 ? savedName :
+      (profile.name.length > 0 ? profile.name : HuaweiAccountUtil.FALLBACK_NAME);
     this.huaweiAccountAvatar = savedAvatar.length > 0 ? savedAvatar : profile.avatar;
-    this.huaweiAccountHint = idToken.length > 0 ? '已获取 ID Token' : '';
     this.hasHuaweiAccount = true;
   }
 
   private async loginWithHuaweiAccount(): Promise<void> {
     try {
-      const provider = new authentication.HuaweiIDProvider();
-      const request = provider.createAuthorizationWithHuaweiIDRequest();
-      request.scopes = ['profile'];
-      request.forceAuthorization = true;
-      request.state = 'onetext_login';
-      request.nonce = 'onetext_login_nonce';
-      request.supportAtomicService = true;
-      const controller = new authentication.AuthenticationController(this.context);
-      const response = await controller.executeRequest(request) as authentication.AuthorizationWithHuaweiIDResponse;
-      const idToken = response.data?.idToken ?? '';
-      const tokenProfile = this.parseHuaweiIdToken(idToken);
-      const profile: HuaweiAccountProfile = {
-        name: response.data?.nickName ?? tokenProfile.name,
-        avatar: response.data?.avatarUri ?? tokenProfile.avatar
-      };
-      await this.saveHuaweiAccount(idToken, profile.name, profile.avatar);
+      const profile = await HuaweiAccountUtil.authorize(this.context);
+      await this.saveHuaweiAccount(profile.idToken, profile.name, profile.avatar);
     } catch (e) {
       console.error('Index', `Huawei account login failed: ${JSON.stringify(e)}`);
-      promptAction.showToast({ message: '华为账号登录失败' });
+      this.showToast('华为账号登录失败');
     }
   }
 
   private async saveHuaweiAccount(idToken: string, name: string, avatar: string): Promise<boolean> {
     if (idToken.length === 0 && name.length === 0 && avatar.length === 0) {
-      promptAction.showToast({ message: '未获取到华为账号信息' });
+      this.showToast('未获取到华为账号信息');
       return false;
     }
-    this.huaweiAccountName = name.length > 0 ? name : '华为账号用户';
+    this.huaweiAccountName = name.length > 0 ? name : HuaweiAccountUtil.FALLBACK_NAME;
     this.huaweiAccountAvatar = avatar;
-    this.huaweiAccountHint = idToken.length > 0 ? '已获取 ID Token' : '';
     this.hasHuaweiAccount = true;
     await this.prefs.putString('huawei_id_token', idToken);
     await this.prefs.putString('huawei_account_name', this.huaweiAccountName);
     await this.prefs.putString('huawei_account_avatar', this.huaweiAccountAvatar);
     await this.prefs.putBoolean('huawei_account_logged_in', true);
-    promptAction.showToast({ message: '华为账号登录成功' });
+    this.showToast('华为账号登录成功');
     return true;
   }
 
@@ -230,47 +293,18 @@ struct Index {
     await this.prefs.remove('huawei_account_name');
     await this.prefs.remove('huawei_account_avatar');
     await this.prefs.remove('huawei_account_logged_in');
-    this.huaweiAccountName = '华为账号用户';
+    this.huaweiAccountName = HuaweiAccountUtil.FALLBACK_NAME;
     this.huaweiAccountAvatar = '';
-    this.huaweiAccountHint = '';
     this.hasHuaweiAccount = false;
-    promptAction.showToast({ message: '已退出华为账号' });
+    this.showToast('已退出华为账号');
   }
 
   private async cancelHuaweiAuthorization(): Promise<void> {
     try {
-      const provider = new authentication.HuaweiIDProvider();
-      const request = provider.createCancelAuthorizationRequest();
-      request.state = 'onetext_logout';
-      const controller = new authentication.AuthenticationController(this.context);
-      await controller.executeRequest(request);
+      await HuaweiAccountUtil.cancelAuthorization(this.context);
     } catch (e) {
       console.warn('Index', `Cancel Huawei authorization skipped: ${JSON.stringify(e)}`);
     }
-  }
-
-  private parseHuaweiIdToken(idToken: string): HuaweiAccountProfile {
-    const profile: HuaweiAccountProfile = { name: '', avatar: '' };
-    const parts = idToken.split('.');
-    if (parts.length < 2) {
-      return profile;
-    }
-    try {
-      let payload = parts[1];
-      while (payload.length % 4 !== 0) {
-        payload += '=';
-      }
-      const base64Helper = new util.Base64Helper();
-      const payloadBytes = base64Helper.decodeSync(payload, util.Type.BASIC_URL_SAFE);
-      const decoder = new util.TextDecoder('utf-8');
-      const payloadJson = decoder.decodeToString(payloadBytes);
-      const payloadObj = JSON.parse(payloadJson) as Record<string, string>;
-      profile.name = payloadObj.name ?? payloadObj.nickname ?? payloadObj.display_name ?? '';
-      profile.avatar = payloadObj.picture ?? payloadObj.avatar ?? '';
-    } catch (e) {
-      console.warn('Index', `Parse Huawei ID Token skipped: ${JSON.stringify(e)}`);
-    }
-    return profile;
   }
 
   /**
@@ -282,7 +316,7 @@ struct Index {
       const feedCode = await this.prefs.getNumber('feed_code', 0);
       const feedMap = await this.coreUtil.getFeedInformation(feedCode);
 
-      if (feedMap.feed_type === 'internet') {
+      if (feedMap.feed_type === CoreUtil.FEED_TYPE_INTERNET) {
         // API 类型订阅源
         const apiString = await this.prefs.getString('api_string', '');
         const shouldUpdate = await this.coreUtil.ifOneTextShouldUpdate(false);
@@ -305,15 +339,24 @@ struct Index {
           // 后台更新检查
           await this.coreUtil.runOneTextUpdate();
         } else {
-          promptAction.showToast({ message: $r('app.string.init_failed') });
+          this.showToast($r('app.string.init_failed'));
         }
       }
       await this.coreUtil.saveCurrentOneText(this.oneText);
+      await this.refreshWidgetForms();
     } catch (e) {
       console.error('Index', `loadOneText error: ${JSON.stringify(e)}`);
-      promptAction.showToast({ message: $r('app.string.refresh_failed') });
+      this.showToast($r('app.string.refresh_failed'));
     } finally {
       this.isLoading = false;
+    }
+  }
+
+  private async refreshWidgetForms(): Promise<void> {
+    try {
+      await FormUtil.refreshForms(this.context, this.coreUtil);
+    } catch (e) {
+      console.error('Index', `refreshWidgetForms error: ${JSON.stringify(e)}`);
     }
   }
 
@@ -324,7 +367,7 @@ struct Index {
     const pasteData = pasteboard.createData(pasteboard.MIMETYPE_TEXT_PLAIN, text);
     const systemPasteboard = pasteboard.getSystemPasteboard();
     systemPasteboard.setDataSync(pasteData);
-    promptAction.showToast({ message: $r('app.string.copied') });
+    this.showToast($r('app.string.copied'));
   }
 
   /**
@@ -332,6 +375,12 @@ struct Index {
    */
   private async saveScreenshot(): Promise<void> {
     try {
+      const hasPermission = await this.ensureWriteImageVideoPermission();
+      if (!hasPermission) {
+        this.showToast($r('app.string.save_permission_denied'));
+        return;
+      }
+
       const pixelMap = await componentSnapshot.get('onetext_card');
       const helper = photoAccessHelper.getPhotoAccessHelper(this.context);
       const uri = await helper.createAsset(photoAccessHelper.PhotoType.IMAGE, 'jpg');
@@ -340,72 +389,92 @@ struct Index {
       const file = fileIo.openSync(uri, fileIo.OpenMode.WRITE_ONLY);
       fileIo.writeSync(file.fd, data);
       fileIo.closeSync(file);
-      promptAction.showToast({ message: $r('app.string.save_succeed') });
+      this.showToast($r('app.string.save_succeed'));
     } catch (e) {
       console.error('Index', `saveScreenshot error: ${JSON.stringify(e)}`);
-      promptAction.showToast({ message: $r('app.string.save_fail') });
+      this.showToast($r('app.string.save_fail'));
+    }
+  }
+
+  private async ensureWriteImageVideoPermission(): Promise<boolean> {
+    try {
+      const atManager = abilityAccessCtrl.createAtManager();
+      const result = await atManager.requestPermissionsFromUser(this.context, [WRITE_IMAGEVIDEO_PERMISSION]);
+      return result.authResults.length > 0 &&
+        result.authResults[0] === abilityAccessCtrl.GrantStatus.PERMISSION_GRANTED;
+    } catch (e) {
+      console.error('Index', `request save permission error: ${JSON.stringify(e)}`);
+      return false;
     }
   }
 
   build() {
-    Navigation(this.navPathStack) {
-      HdsTabs({ barPosition: BarPosition.End, index: this.selectedTabIndex }) {
-        TabContent() {
-          this.HomePage()
-        }
-        .tabBar(this.OfficialBottomTabStyle($r('app.media.ic_home'), $r('app.string.tab_home')))
+    Stack() {
+      AppBackgroundLayer()
 
-        TabContent() {
-          this.MinePage()
+      Navigation(this.navPathStack) {
+        HdsTabs({ barPosition: BarPosition.End, index: this.selectedTabIndex }) {
+          TabContent() {
+            this.HomePage()
+          }
+          .backgroundColor(UiStyle.TRANSPARENT)
+          .tabBar(this.OfficialBottomTabStyle($r('app.media.ic_home'), $r('app.string.tab_home')))
+
+          TabContent() {
+            this.MinePage()
+          }
+          .backgroundColor(UiStyle.TRANSPARENT)
+          .tabBar(this.OfficialBottomTabStyle($r('app.media.ic_user'), $r('app.string.tab_mine')))
         }
-        .tabBar(this.OfficialBottomTabStyle($r('app.media.ic_user'), $r('app.string.tab_mine')))
+        .width('100%')
+        .height('100%')
+        .backgroundColor(UiStyle.TRANSPARENT)
+        .barMode(BarMode.Fixed)
+        .barHeight(64)
+        .barOverlap(true)
+        .barFloatingStyle({
+          barWidth: {
+            smallWidth: 250,
+            mediumWidth: 286,
+            largeWidth: 320
+          },
+          barSideMargin: 32,
+          barBottomMargin: 30,
+          gradientMask: {
+            maskColor: UiStyle.TRANSPARENT,
+            maskHeight: 112
+          },
+          adaptToHandedness: false,
+          systemMaterialEffect: {
+            materialType: hdsMaterial.MaterialType.ADAPTIVE,
+            materialLevel: hdsMaterial.MaterialLevel.ADAPTIVE
+          },
+          thermoCtrl: true
+        })
+        .scrollable(false)
+        .animationDuration(180)
+        .onChange((index: number) => {
+          this.selectedTabIndex = index;
+        })
       }
-      .width('100%')
-      .height('100%')
-      .backgroundColor(UiStyle.PAGE_BG)
-      .barMode(BarMode.Fixed)
-      .barHeight(56)
-      .barOverlap(true)
-      .barBackgroundColor('#70FFFFFF')
-      .barBackgroundBlurStyle(BlurStyle.COMPONENT_REGULAR)
-      .blurStrategy(BlurStrategy.ADAPTIVE)
-      .barFloatingStyle({
-        barWidth: {
-          smallWidth: 250,
-          mediumWidth: 286,
-          largeWidth: 320
-        },
-        barSideMargin: 32,
-        barBottomMargin: 30,
-        gradientMask: {
-          maskColor: UiStyle.TRANSPARENT,
-          maskHeight: 112
-        },
-        adaptToHandedness: false,
-        lightColor: '#FFFFFFFF',
-        systemMaterialEffect: {
-          materialType: hdsMaterial.MaterialType.IMMERSIVE,
-          materialLevel: hdsMaterial.MaterialLevel.GENTLE
-        },
-        thermoCtrl: true,
-        barOpacity: 0.9
-      })
-      .scrollable(false)
-      .animationDuration(180)
-      .onChange((index: number) => {
-        this.selectedTabIndex = index;
+      .hideTitleBar(true)
+      .navDestination(this.PageMap)
+      .mode(NavigationMode.Stack)
+      .backgroundColor(UiStyle.TRANSPARENT)
+      .onAreaChange((oldValue: Area, newValue: Area) => {
+        this.pageWidth = Number.parseFloat(String(newValue.width));
       })
     }
-    .hideTitleBar(true)
-    .navDestination(this.PageMap)
-    .mode(NavigationMode.Stack)
+    .width('100%')
+    .height('100%')
+    .backgroundColor(UiStyle.TRANSPARENT)
   }
 
   private OfficialBottomTabStyle(icon: ResourceStr, label: ResourceStr): BottomTabBarStyle {
     return BottomTabBarStyle
       .of(icon, label)
       .labelStyle({
-        font: { size: 11, weight: FontWeight.Medium },
+        font: { size: 12, weight: FontWeight.Bold },
         selectedColor: $r('app.color.colorPrimary'),
         unselectedColor: '#4F5A60'
       })
@@ -416,7 +485,7 @@ struct Index {
       .padding({ left: 4, right: 4, top: 4, bottom: 4 })
       .layoutMode(LayoutMode.VERTICAL)
       .verticalAlign(VerticalAlign.Center)
-      .symmetricExtensible(true);
+      .symmetricExtensible(false);
   }
 
   @Builder
@@ -428,126 +497,25 @@ struct Index {
       Refresh({ refreshing: $$this.isRefreshing, offset: 72 }) {
         Scroll() {
           Column() {
-            // Hitokoto 卡片
-            Column() {
-              Stack() {
-                Column() {
-                }
-                .width(190)
-                .height(190)
-                .backgroundColor('#EEF3FF')
-                .borderRadius(95)
-                .opacity(0.78)
-                .position({ x: -54, y: -62 })
-                .zIndex(0)
-
-                Column() {
-                }
-                .width(120)
-                .height(120)
-                .backgroundColor('#F7FAFF')
-                .borderRadius(60)
-                .opacity(0.9)
-                .position({ x: 248, y: 202 })
-                .zIndex(0)
-
-                if (this.sealVisible) {
-                  Image($r('app.media.moemiku'))
-                    .width(158)
-                    .height(158)
-                    .opacity(0.42)
-                    .position({ x: 198, y: 112 })
-                    .zIndex(1)
-                }
-
-                if (this.oneText.text !== '') {
-                  Column() {
-                    Text(this.oneText.text.replace(CoreUtil.TEXT_REPLACE_HOLDER, CoreUtil.TEXT_REPLACE))
-                      .fontSize(this.textFontSize)
-                      .fontFamily(this.getCurrentFontFamily())
-                      .fontWeight(FontWeight.Medium)
-                      .fontColor($r('app.color.colorText1'))
-                      .width('100%')
-                      .textAlign(TextAlign.Center)
-                      .lineHeight(this.textFontSize * 1.55)
-                      .maxLines(4)
-                      .textOverflow({ overflow: TextOverflow.Ellipsis })
-                      .onClick(() => {
-                        this.copyToClipboard(this.oneText.text);
-                      })
-
-                    if (this.oneText.by !== '') {
-                      Text(`-- ${this.oneText.by}`)
-                        .fontSize(this.byFontSize)
-                        .fontFamily(this.getCurrentFontFamily())
-                        .fontColor($r('app.color.colorText3'))
-                        .textAlign(TextAlign.Center)
-                        .margin({ top: 18 })
-                        .onClick(() => {
-                          this.copyToClipboard(this.oneText.by);
-                        })
-                    }
-
-                    if (this.oneText.from !== '' || this.oneText.time !== '') {
-                      Text(this.oneText.from !== '' ? this.oneText.from : this.oneText.time)
-                        .fontSize(this.fromFontSize)
-                        .fontFamily(this.getCurrentFontFamily())
-                        .fontColor($r('app.color.colorText4'))
-                        .textAlign(TextAlign.Center)
-                        .margin({ top: 18 })
-                        .onClick(() => {
-                          this.copyToClipboard(this.oneText.from !== '' ? this.oneText.from : this.oneText.time);
-                        })
-                    }
-                  }
-                  .width('100%')
-                  .height('100%')
-                  .justifyContent(FlexAlign.Center)
-                  .alignItems(HorizontalAlign.Center)
-                  .padding({ left: 24, right: 24, top: 24, bottom: 24 })
-                  .zIndex(2)
-                }
+            Flex({ direction: FlexDirection.Row, wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Center }) {
+              Column() {
+                this.QuoteCard()
               }
-              .id('onetext_card')
-              .width('100%')
-              .height(306)
-              .backgroundColor($r('app.color.colorCard'))
-              .border({ width: 1, color: UiStyle.CARD_BORDER })
-              .borderRadius(UiStyle.CARD_RADIUS)
-              .shadow({ radius: 24, color: UiStyle.CARD_SHADOW, offsetX: 0, offsetY: 8 })
+              .width(this.isWideLayout() ? `${HOME_QUOTE_SPAN_WIDE}%` : '100%')
+              .padding({ left: this.isWideLayout() ? 8 : 0, right: this.isWideLayout() ? 8 : 0 })
+
+              Column() {
+                this.HomeActionCard()
+              }
+              .width(this.isWideLayout() ? `${HOME_ACTION_SPAN_WIDE}%` : '100%')
+              .padding({ left: this.isWideLayout() ? 8 : 0, right: this.isWideLayout() ? 8 : 0 })
             }
             .width('100%')
-            .padding({ top: 0 })
-
-            Column() {
-              this.ActionRow($r('app.string.save_text'), $r('app.string.save_button'), () => {
-                this.saveScreenshot();
-              })
-
-              this.ActionRow($r('app.string.refresh_onetext_text'), $r('app.string.refresh_button'), () => {
-                this.refreshByPull();
-              })
-
-              this.ActionRow($r('app.string.seal_text'), this.sealVisible ? $r('app.string.seal_button_ison') : $r('app.string.seal_button_isoff'), async () => {
-                this.sealVisible = !this.sealVisible;
-                await this.prefs.putBoolean('seal_enabled', this.sealVisible);
-                promptAction.showToast({ message: this.sealVisible ? $r('app.string.seal_button_ison') : $r('app.string.seal_button_isoff') });
-              })
-
-              this.TextSizeSlider()
-              this.BySizeSlider()
-              this.TimeSizeSlider()
-            }
-            .width('100%')
-            .padding({ left: 18, right: 18, top: 20, bottom: 18 })
-            .margin({ top: 14 })
-            .backgroundColor($r('app.color.colorCard'))
-            .border({ width: 1, color: UiStyle.CARD_BORDER })
-            .borderRadius(26)
-            .shadow({ radius: 18, color: UiStyle.CARD_SHADOW, offsetX: 0, offsetY: 6 })
+            .constraintSize({ maxWidth: this.getHomeContentMaxWidth() })
+            .padding({ left: UiStyle.PAGE_SIDE, right: UiStyle.PAGE_SIDE, bottom: UiStyle.FLOAT_TAB_BOTTOM_SPACE, top: 0 })
           }
           .width('100%')
-          .padding({ left: UiStyle.PAGE_SIDE, right: UiStyle.PAGE_SIDE, bottom: UiStyle.FLOAT_TAB_BOTTOM_SPACE, top: 0 })
+          .alignItems(HorizontalAlign.Center)
         }
         .width('100%')
         .scrollBar(BarState.Off)
@@ -562,7 +530,129 @@ struct Index {
       })
     }
     .height('100%')
-    .backgroundColor(UiStyle.PAGE_BG)
+  }
+
+  @Builder
+  QuoteCard() {
+    Column() {
+      Stack() {
+        Column() {
+        }
+        .width(190)
+        .height(190)
+        .backgroundColor($r('app.color.colorSelectedBg'))
+        .borderRadius(95)
+        .opacity(0.78)
+        .position({ x: -54, y: -62 })
+        .zIndex(0)
+
+        Column() {
+        }
+        .width(120)
+        .height(120)
+        .backgroundColor('#F7FAFF')
+        .borderRadius(60)
+        .opacity(0.9)
+        .position({ x: this.isWideLayout() ? 358 : 248, y: 202 })
+        .zIndex(0)
+
+        if (this.sealVisible) {
+          Image($r('app.media.moemiku'))
+            .width(158)
+            .height(158)
+            .opacity(0.42)
+            .position({ x: this.isWideLayout() ? 308 : 198, y: 112 })
+            .zIndex(1)
+        }
+
+        if (this.oneText.text !== '') {
+          Column() {
+            Text(this.oneText.text.replace(CoreUtil.TEXT_REPLACE_HOLDER, CoreUtil.TEXT_REPLACE))
+              .fontSize(this.textFontSize)
+              .fontFamily(this.getCurrentFontFamily())
+              .fontWeight(FontWeight.Medium)
+              .fontColor($r('app.color.colorText1'))
+              .width('100%')
+              .textAlign(TextAlign.Center)
+              .lineHeight(this.textFontSize * 1.55)
+              .maxLines(this.isWideLayout() ? 6 : 4)
+              .textOverflow({ overflow: TextOverflow.Ellipsis })
+              .onClick(() => {
+                this.copyToClipboard(this.oneText.text);
+              })
+
+            if (this.oneText.by !== '') {
+              Text(`-- ${this.oneText.by}`)
+                .fontSize(this.byFontSize)
+                .fontFamily(this.getCurrentFontFamily())
+                .fontColor($r('app.color.colorText3'))
+                .textAlign(TextAlign.Center)
+                .margin({ top: 18 })
+                .onClick(() => {
+                  this.copyToClipboard(this.oneText.by);
+                })
+            }
+
+            if (this.oneText.from !== '' || this.oneText.time !== '') {
+              Text(this.oneText.from !== '' ? this.oneText.from : this.oneText.time)
+                .fontSize(this.fromFontSize)
+                .fontFamily(this.getCurrentFontFamily())
+                .fontColor($r('app.color.colorText4'))
+                .textAlign(TextAlign.Center)
+                .margin({ top: 18 })
+                .onClick(() => {
+                  this.copyToClipboard(this.oneText.from !== '' ? this.oneText.from : this.oneText.time);
+                })
+            }
+          }
+          .width('100%')
+          .height('100%')
+          .justifyContent(FlexAlign.Center)
+          .alignItems(HorizontalAlign.Center)
+          .padding({ left: 24, right: 24, top: 24, bottom: 24 })
+          .zIndex(2)
+        }
+      }
+      .id('onetext_card')
+      .width('100%')
+      .height(this.isWideLayout() ? 360 : 306)
+      .backgroundColor(this.getGlassCardColor())
+      .border({ width: 1, color: this.getGlassCardBorder() })
+      .borderRadius(UiStyle.CARD_RADIUS)
+      .shadow({ radius: 24, color: this.getGlassShadowColor(), offsetX: 0, offsetY: 8 })
+    }
+    .width('100%')
+    .padding({ top: 0 })
+  }
+
+  @Builder
+  HomeActionCard() {
+    Column() {
+      this.ActionRow($r('app.string.save_text'), $r('app.string.save_button'), () => {
+        this.saveScreenshot();
+      })
+
+      this.ActionRow($r('app.string.refresh_onetext_text'), $r('app.string.refresh_button'), () => {
+        this.refreshByPull();
+      })
+
+      this.ActionRow($r('app.string.seal_text'), this.sealVisible ? $r('app.string.seal_button_ison') : $r('app.string.seal_button_isoff'), async () => {
+        this.sealVisible = !this.sealVisible;
+        await this.prefs.putBoolean('seal_enabled', this.sealVisible);
+        this.showToast(this.sealVisible ? $r('app.string.seal_button_ison') : $r('app.string.seal_button_isoff'));
+      })
+
+      this.TextSizeSlider()
+      this.BySizeSlider()
+      this.TimeSizeSlider()
+    }
+    .width('100%')
+    .padding({ left: 18, right: 18, top: 20, bottom: 18 })
+    .margin({ top: this.isWideLayout() ? 0 : 14 })
+    .backgroundColor(this.getGlassCardColor())
+    .border({ width: 1, color: this.getGlassCardBorder() })
+    .borderRadius(26)
+    .shadow({ radius: 18, color: this.getGlassShadowColor(), offsetX: 0, offsetY: 6 })
   }
 
   @Builder
@@ -616,17 +706,20 @@ struct Index {
           this.MineSettingsCard()
         }
         .width('100%')
-        .padding({ left: UiStyle.PAGE_SIDE, right: UiStyle.PAGE_SIDE, top: UiStyle.PAGE_TOP, bottom: UiStyle.FLOAT_TAB_BOTTOM_SPACE })
+        .constraintSize({ maxWidth: this.getMinePaneMaxWidth(), minHeight: MINE_PANE_MIN_HEIGHT })
+        .padding({ left: MINE_PAGE_SIDE, right: MINE_PAGE_SIDE, top: MINE_PAGE_TOP, bottom: UiStyle.FLOAT_TAB_BOTTOM_SPACE })
         .alignItems(HorizontalAlign.Center)
+        .translate({ y: MINE_PANE_OFFSET_Y })
       }
       .width('100%')
       .height('100%')
+      .expandSafeArea([SafeAreaType.SYSTEM], [SafeAreaEdge.TOP, SafeAreaEdge.START, SafeAreaEdge.END])
       .scrollBar(BarState.Off)
       .edgeEffect(EdgeEffect.Spring)
     }
     .width('100%')
     .height('100%')
-    .backgroundColor(UiStyle.PAGE_BG)
+    .expandSafeArea([SafeAreaType.SYSTEM], [SafeAreaEdge.TOP, SafeAreaEdge.START, SafeAreaEdge.END])
   }
 
   @Builder
@@ -639,13 +732,13 @@ struct Index {
             .height(LOGGED_IN_AVATAR_SIZE)
             .borderRadius(LOGGED_IN_AVATAR_RADIUS)
             .objectFit(ImageFit.Cover)
-            .backgroundColor('#EEF3FF')
+            .backgroundColor($r('app.color.colorSelectedBg'))
         } else {
           Image($r('app.media.app_icon'))
             .width(LOGGED_IN_AVATAR_SIZE)
             .height(LOGGED_IN_AVATAR_SIZE)
             .borderRadius(LOGGED_IN_AVATAR_RADIUS)
-            .backgroundColor('#EEF3FF')
+            .backgroundColor($r('app.color.colorSelectedBg'))
             .padding(12)
         }
 
@@ -686,8 +779,11 @@ struct Index {
       }
     }
     .width('100%')
-    .padding({ left: 16, right: 16, bottom: 18 })
+    .height(MINE_ACCOUNT_HEADER_HEIGHT)
+    .justifyContent(FlexAlign.Center)
+    .padding({ left: 16, right: 16, top: 5, bottom: 5 })
     .alignItems(HorizontalAlign.Center)
+    .translate({ y: MINE_ACCOUNT_HEADER_OFFSET_Y })
   }
 
   @Builder
@@ -705,10 +801,12 @@ struct Index {
     }
     .width('100%')
     .padding({ left: 18, right: 18, top: 24, bottom: 12 })
-    .backgroundColor($r('app.color.colorCard'))
-    .border({ width: 1, color: UiStyle.CARD_BORDER })
+    .backgroundColor(this.getGlassCardColor())
+    .border({ width: 1, color: this.getGlassCardBorder() })
     .borderRadius(UiStyle.CARD_RADIUS)
-    .shadow({ radius: 20, color: UiStyle.CARD_SHADOW, offsetX: 0, offsetY: 6 })
+    .shadow({ radius: 20, color: this.getGlassShadowColor(), offsetX: 0, offsetY: 6 })
+    .margin({ top: MINE_FONT_CARD_TOP })
+    .translate({ y: MINE_FONT_CARD_OFFSET_Y })
   }
 
   @Builder
@@ -729,11 +827,12 @@ struct Index {
     }
     .width('100%')
     .padding({ left: 18, right: 18, top: 10, bottom: 8 })
-    .margin({ top: 14 })
-    .backgroundColor($r('app.color.colorCard'))
-    .border({ width: 1, color: UiStyle.CARD_BORDER })
+    .margin({ top: MINE_SETTINGS_CARD_TOP })
+    .backgroundColor(this.getGlassCardColor())
+    .border({ width: 1, color: this.getGlassCardBorder() })
     .borderRadius(UiStyle.CARD_RADIUS)
-    .shadow({ radius: 18, color: UiStyle.CARD_SHADOW, offsetX: 0, offsetY: 6 })
+    .shadow({ radius: 18, color: this.getGlassShadowColor(), offsetX: 0, offsetY: 6 })
+    .translate({ y: MINE_SETTINGS_CARD_OFFSET_Y })
   }
 
   @Builder
@@ -775,9 +874,9 @@ struct Index {
           .height(112)
           .padding({ left: 14, right: 14, top: 14, bottom: 14 })
           .borderRadius(18)
-          .backgroundColor(this.fontStyleIndex === index ? '#F5F8FF' : '#FFFFFF')
-          .border({ width: 1, color: this.fontStyleIndex === index ? '#BFD0FF' : '#E7EAF0' })
-          .shadow({ radius: this.fontStyleIndex === index ? 12 : 0, color: '#122F6BFF', offsetX: 0, offsetY: 5 })
+          .backgroundColor(this.fontStyleIndex === index ? this.getGlassSelectedColor() : this.getGlassControlColor())
+          .border({ width: 1, color: this.fontStyleIndex === index ? '#662F6BFF' : this.getGlassCardBorder() })
+          .shadow({ radius: this.fontStyleIndex === index ? 12 : 0, color: this.getGlassShadowColor(), offsetX: 0, offsetY: 5 })
           .onClick(async () => {
             this.fontStyleIndex = index;
             await this.prefs.putNumber('onetext_font_style', index);
@@ -924,7 +1023,8 @@ struct Index {
         .height(38)
         .textAlign(TextAlign.Center)
         .borderRadius(19)
-        .backgroundColor('#EEF3FF')
+        .backgroundColor(this.getGlassSelectedColor())
+        .border({ width: 1, color: this.getGlassCardBorder() })
         .padding({ top: 10 })
         .onClick(() => {
           this.textFontSize = 23;
@@ -956,7 +1056,8 @@ struct Index {
         .height(38)
         .textAlign(TextAlign.Center)
         .borderRadius(19)
-        .backgroundColor('#EEF3FF')
+        .backgroundColor(this.getGlassSelectedColor())
+        .border({ width: 1, color: this.getGlassCardBorder() })
         .padding({ top: 10 })
         .onClick(() => {
           this.byFontSize = 18;
@@ -990,7 +1091,8 @@ struct Index {
         .height(38)
         .textAlign(TextAlign.Center)
         .borderRadius(19)
-        .backgroundColor('#EEF3FF')
+        .backgroundColor(this.getGlassSelectedColor())
+        .border({ width: 1, color: this.getGlassCardBorder() })
         .padding({ top: 10 })
         .onClick(() => {
           this.timeFontSize = 15;

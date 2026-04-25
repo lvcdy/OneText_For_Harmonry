@@ -45,6 +45,10 @@
             "value": "儲存失敗"
         },
         {
+            "name": "save_permission_denied",
+            "value": "需要授予圖庫權限後才能儲存圖片"
+        },
+        {
             "name": "permission_write_imagevideo_reason",
             "value": "允許 Hitokoto 將句子截圖儲存到圖庫。"
         },
@@ -227,6 +231,42 @@
         {
             "name": "chinese_type",
             "value": "語言"
+        },
+        {
+            "name": "adaptive_grip",
+            "value": "適人握持"
+        },
+        {
+            "name": "background_mode",
+            "value": "應用背景"
+        },
+        {
+            "name": "background_local_image",
+            "value": "本地圖片"
+        },
+        {
+            "name": "background_pick_image",
+            "value": "選擇"
+        },
+        {
+            "name": "background_api_placeholder",
+            "value": "圖片直連或回傳圖片的 API"
+        },
+        {
+            "name": "background_apply_api",
+            "value": "套用圖片 API"
+        },
+        {
+            "name": "background_image_selected",
+            "value": "已選擇背景圖片"
+        },
+        {
+            "name": "background_image_failed",
+            "value": "選擇背景圖片失敗"
+        },
+        {
+            "name": "background_api_empty",
+            "value": "請先輸入圖片 URL 或 API"
         },
         {
             "name": "welcome_title",

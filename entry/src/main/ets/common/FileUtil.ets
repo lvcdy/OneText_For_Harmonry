@@ -6,18 +6,31 @@ import { util } from '@kit.ArkTS';
  * 文件操作工具类 - 替代 Android FileUtil
  */
 export class FileUtil {
+  private static ensureDir(dirPath: string): void {
+    try {
+      if (fileIo.accessSync(dirPath)) {
+        return;
+      }
+    } catch (e) {
+    }
+    fileIo.mkdirSync(dirPath, true);
+  }
+
   /**
    * 从文件读取文本
    */
   static readTextFromFile(path: string): string {
     try {
       const file = fileIo.openSync(path, fileIo.OpenMode.READ_ONLY);
-      const stat = fileIo.statSync(path);
-      const buf = new ArrayBuffer(stat.size);
-      fileIo.readSync(file.fd, buf);
-      fileIo.closeSync(file);
-      const decoder = new util.TextDecoder('utf-8');
-      return decoder.decodeToString(new Uint8Array(buf));
+      try {
+        const stat = fileIo.statSync(path);
+        const buf = new ArrayBuffer(stat.size);
+        fileIo.readSync(file.fd, buf);
+        const decoder = new util.TextDecoder('utf-8');
+        return decoder.decodeToString(new Uint8Array(buf));
+      } finally {
+        fileIo.closeSync(file);
+      }
     } catch (e) {
       console.error('FileUtil', `Failed to read file: ${path}, error: ${JSON.stringify(e)}`);
       return '';
@@ -29,16 +42,16 @@ export class FileUtil {
    */
   static writeTextToFile(content: string, dirPath: string, fileName: string): boolean {
     try {
-      // 确保目录存在
-      if (!fileIo.accessSync(dirPath)) {
-        fileIo.mkdirSync(dirPath, true);
-      }
+      FileUtil.ensureDir(dirPath);
       const filePath = `${dirPath}/${fileName}`;
       const file = fileIo.openSync(filePath, fileIo.OpenMode.CREATE | fileIo.OpenMode.WRITE_ONLY | fileIo.OpenMode.TRUNC);
-      const encoder = new util.TextEncoder();
-      const encoded = encoder.encode(content);
-      fileIo.writeSync(file.fd, encoded.buffer);
-      fileIo.closeSync(file);
+      try {
+        const encoder = new util.TextEncoder();
+        const encoded = encoder.encode(content);
+        fileIo.writeSync(file.fd, encoded.buffer);
+      } finally {
+        fileIo.closeSync(file);
+      }
       return true;
     } catch (e) {
       console.error('FileUtil', `Failed to write file: ${dirPath}/${fileName}, error: ${JSON.stringify(e)}`);
@@ -84,13 +97,14 @@ export class FileUtil {
     try {
       const resourceManager = context.resourceManager;
       const data = await resourceManager.getRawFileContent(rawFileName);
-      if (!fileIo.accessSync(destDir)) {
-        fileIo.mkdirSync(destDir, true);
-      }
+      FileUtil.ensureDir(destDir);
       const destPath = `${destDir}/${destFileName}`;
       const file = fileIo.openSync(destPath, fileIo.OpenMode.CREATE | fileIo.OpenMode.WRITE_ONLY | fileIo.OpenMode.TRUNC);
-      fileIo.writeSync(file.fd, data.buffer);
-      fileIo.closeSync(file);
+      try {
+        fileIo.writeSync(file.fd, data.buffer);
+      } finally {
+        fileIo.closeSync(file);
+      }
       return true;
     } catch (e) {
       console.error('FileUtil', `Failed to copy rawfile: ${rawFileName}, error: ${JSON.stringify(e)}`);

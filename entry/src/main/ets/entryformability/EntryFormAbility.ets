@@ -1,8 +1,9 @@
-import { FormExtensionAbility, formBindingData, formInfo, formProvider } from '@kit.FormKit';
+import { FormExtensionAbility, formBindingData, formInfo } from '@kit.FormKit';
 import { Want } from '@kit.AbilityKit';
 import { hilog } from '@kit.PerformanceAnalysisKit';
-import { preferences } from '@kit.ArkData';
 import { CoreUtil } from '../common/CoreUtil';
+import { FormUtil } from '../common/FormUtil';
+import { PreferencesUtil } from '../common/PreferencesUtil';
 
 const TAG = 'EntryFormAbility';
 const DOMAIN = 0x0000;
@@ -19,16 +20,10 @@ export default class EntryFormAbility extends FormExtensionAbility {
     const formId = want.parameters?.['ohos.extra.param.key.form_identity'] as string;
     if (formId) {
       this.saveFormId(formId);
+      this.updateWidgetData(formId);
     }
 
-    const formData: Record<string, string> = {
-      'text': '生活不止眼前的苟且，还有诗和远方。',
-      'by': '高晓松',
-      'widget_dark': 'false',
-      'widget_shadow': 'true',
-      'widget_center': 'true'
-    };
-    return formBindingData.createFormBindingData(formData);
+    return formBindingData.createFormBindingData(FormUtil.DEFAULT_FORM_DATA);
   }
 
   onCastToNormalForm(formId: string): void {
@@ -61,14 +56,7 @@ export default class EntryFormAbility extends FormExtensionAbility {
    */
   private async saveFormId(formId: string): Promise<void> {
     try {
-      const prefs = await preferences.getPreferences(this.context, 'form_ids');
-      const idsStr = (await prefs.get('form_id_list', '')) as string;
-      const ids = idsStr ? idsStr.split(',') : [];
-      if (!ids.includes(formId)) {
-        ids.push(formId);
-        await prefs.put('form_id_list', ids.join(','));
-        await prefs.flush();
-      }
+      await FormUtil.saveFormId(this.context, formId);
     } catch (e) {
       hilog.error(DOMAIN, TAG, `saveFormId error: ${JSON.stringify(e)}`);
     }
@@ -79,11 +67,7 @@ export default class EntryFormAbility extends FormExtensionAbility {
    */
   private async removeFormId(formId: string): Promise<void> {
     try {
-      const prefs = await preferences.getPreferences(this.context, 'form_ids');
-      const idsStr = (await prefs.get('form_id_list', '')) as string;
-      const ids = idsStr ? idsStr.split(',').filter((id: string) => id !== formId) : [];
-      await prefs.put('form_id_list', ids.join(','));
-      await prefs.flush();
+      await FormUtil.removeFormId(this.context, formId);
     } catch (e) {
       hilog.error(DOMAIN, TAG, `removeFormId error: ${JSON.stringify(e)}`);
     }
@@ -91,11 +75,12 @@ export default class EntryFormAbility extends FormExtensionAbility {
 
   private async updateWidgetData(formId: string): Promise<void> {
     try {
+      await PreferencesUtil.getInstance().init(this.context);
       const coreUtil = new CoreUtil(this.context);
+      await coreUtil.initFeedFile();
       const formData = await coreUtil.buildWidgetFormData();
       if (formData) {
-        const formBindData = formBindingData.createFormBindingData(formData);
-        await formProvider.updateForm(formId, formBindData);
+        await FormUtil.updateForm(formId, formData);
       }
     } catch (e) {
       hilog.error(DOMAIN, TAG, `updateWidgetData error: ${JSON.stringify(e)}`);

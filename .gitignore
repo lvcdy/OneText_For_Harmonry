@@ -1,6 +1,8 @@
 .idea/
 .hvigor/
+.appanalyzer/
 oh_modules/
 oh-package-lock.json5
 build/
 */build/
+entry/.preview/

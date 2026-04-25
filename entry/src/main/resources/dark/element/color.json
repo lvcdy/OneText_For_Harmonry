@@ -2,51 +2,63 @@
     "color": [
         {
             "name": "start_window_background",
-            "value": "#000000"
+            "value": "#0B0D12"
         },
         {
             "name": "colorPrimary",
-            "value": "#828282"
+            "value": "#5B8DFF"
         },
         {
             "name": "colorPrimaryDark",
-            "value": "#000000"
+            "value": "#10141C"
         },
         {
             "name": "colorWhite",
-            "value": "#000000"
+            "value": "#FFFFFF"
         },
         {
             "name": "colorAccent",
-            "value": "#828282"
+            "value": "#5B8DFF"
         },
         {
             "name": "colorText1",
-            "value": "#FFFFFB"
+            "value": "#F4F7FB"
         },
         {
             "name": "colorText2",
-            "value": "#F5F5F5"
+            "value": "#DDE4EE"
         },
         {
             "name": "colorText3",
-            "value": "#FCFAF2"
+            "value": "#B5BECC"
         },
         {
             "name": "colorText4",
-            "value": "#DFE4DE"
+            "value": "#8792A3"
         },
         {
             "name": "colorMD2BG",
-            "value": "#808080"
+            "value": "#2B313C"
         },
         {
             "name": "colorBackground",
-            "value": "#000000"
+            "value": "#0B0D12"
         },
         {
             "name": "colorCard",
-            "value": "#000000"
+            "value": "#171B24"
+        },
+        {
+            "name": "colorControlBg",
+            "value": "#252B36"
+        },
+        {
+            "name": "colorSelectedBg",
+            "value": "#18325F"
+        },
+        {
+            "name": "colorCardBorder",
+            "value": "#263142"
         }
     ]
 }

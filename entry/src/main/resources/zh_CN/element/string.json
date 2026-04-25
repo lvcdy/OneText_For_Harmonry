@@ -45,6 +45,10 @@
             "value": "保存失败"
         },
         {
+            "name": "save_permission_denied",
+            "value": "需要授予图库权限后才能保存图片"
+        },
+        {
             "name": "permission_write_imagevideo_reason",
             "value": "允许 Hitokoto 将句子截图保存到图库。"
         },
@@ -227,6 +231,42 @@
         {
             "name": "chinese_type",
             "value": "语言"
+        },
+        {
+            "name": "adaptive_grip",
+            "value": "适人握持"
+        },
+        {
+            "name": "background_mode",
+            "value": "应用背景"
+        },
+        {
+            "name": "background_local_image",
+            "value": "本地图片"
+        },
+        {
+            "name": "background_pick_image",
+            "value": "选择"
+        },
+        {
+            "name": "background_api_placeholder",
+            "value": "图片直链或返回图片的 API"
+        },
+        {
+            "name": "background_apply_api",
+            "value": "应用图片 API"
+        },
+        {
+            "name": "background_image_selected",
+            "value": "已选择背景图片"
+        },
+        {
+            "name": "background_image_failed",
+            "value": "选择背景图片失败"
+        },
+        {
+            "name": "background_api_empty",
+            "value": "请先输入图片 URL 或 API"
         },
         {
             "name": "welcome_title",

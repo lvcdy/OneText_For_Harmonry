@@ -19,7 +19,7 @@ export class PreferencesUtil {
     return PreferencesUtil.instance;
   }
 
-  async init(context: common.UIAbilityContext): Promise<void> {
+  async init(context: common.Context): Promise<void> {
     this.prefs = await preferences.getPreferences(context, PreferencesUtil.PREF_NAME);
   }
 

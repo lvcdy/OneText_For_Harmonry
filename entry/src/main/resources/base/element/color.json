@@ -47,6 +47,18 @@
         {
             "name": "colorCard",
             "value": "#FFFFFF"
+        },
+        {
+            "name": "colorControlBg",
+            "value": "#F3F5F8"
+        },
+        {
+            "name": "colorSelectedBg",
+            "value": "#EEF3FF"
+        },
+        {
+            "name": "colorCardBorder",
+            "value": "#ECF3FF"
         }
     ]
 }

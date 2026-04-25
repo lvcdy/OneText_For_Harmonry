@@ -1,6 +1,12 @@
 import { common, Want } from '@kit.AbilityKit';
 import { promptAction } from '@kit.ArkUI';
 import { UiStyle } from '../common/UiStyle';
+import { AppBackgroundLayer } from '../common/AppBackgroundUtil';
+
+const ABOUT_CONTENT_MAX_WIDTH_COMPACT: number = 560;
+const ABOUT_CONTENT_MAX_WIDTH_WIDE: number = 760;
+const ABOUT_RESPONSIVE_WIDE_WIDTH: number = 720;
+const APP_VERSION_NAME: string = '1.0.0';
 
 /**
  * 关于页面 - 替代 Android AboutActivity
@@ -8,8 +14,24 @@ import { UiStyle } from '../common/UiStyle';
  */
 @Component
 export struct AboutPageContent {
+  @State pageWidth: number = 0;
   @Consume('navPathStack') navPathStack: NavPathStack;
-  private context: common.UIAbilityContext = getContext(this) as common.UIAbilityContext;
+
+  private isWideLayout(): boolean {
+    return this.pageWidth >= ABOUT_RESPONSIVE_WIDE_WIDTH;
+  }
+
+  private getContentMaxWidth(): number {
+    return this.isWideLayout() ? ABOUT_CONTENT_MAX_WIDTH_WIDE : ABOUT_CONTENT_MAX_WIDTH_COMPACT;
+  }
+
+  private getGlassCardColor(): ResourceColor {
+    return UiStyle.GLASS_CARD_BG;
+  }
+
+  private getGlassCardBorder(): ResourceColor {
+    return UiStyle.GLASS_CARD_BORDER;
+  }
 
   private async openLink(url: string): Promise<void> {
     const want: Want = {
@@ -18,180 +40,170 @@ export struct AboutPageContent {
     };
 
     try {
-      await this.context.startAbility(want);
+      const context = getContext(this) as common.UIAbilityContext;
+      await context.startAbility(want);
     } catch (e) {
       console.error('AboutPage', `openLink error: ${JSON.stringify(e)}`);
-      promptAction.showToast({ message: '无法打开链接' });
+      this.showToast('无法打开链接');
+    }
+  }
+
+  private showToast(message: string): void {
+    try {
+      promptAction.showToast({ message: message });
+    } catch (e) {
+      console.warn('AboutPage', `showToast skipped: ${JSON.stringify(e)}`);
     }
   }
 
   build() {
     NavDestination() {
-      Column() {
-        // 顶部标题栏
-        Row() {
-          Image($r('app.media.ic_back'))
-            .width(24)
-            .height(24)
-            .onClick(() => {
-              this.navPathStack.pop();
-            })
+      Stack() {
+        AppBackgroundLayer()
 
-        Text($r('app.string.about_text'))
-          .fontSize(20)
-          .fontWeight(FontWeight.Bold)
-          .fontColor($r('app.color.colorText1'))
-          .margin({ left: 16 })
-
-        Blank()
-      }
-      .width('100%')
-      .height(UiStyle.HEADER_ROW_HEIGHT)
-      .padding({ left: UiStyle.PAGE_SIDE, right: UiStyle.PAGE_SIDE })
-
-      Scroll() {
         Column() {
-          // 应用图标和名称
-          Column() {
-            Image($r('app.media.app_icon'))
-              .width(80)
-              .height(80)
-              .borderRadius(16)
+          // 顶部标题栏
+          Row() {
+            Image($r('app.media.ic_back'))
+              .width(24)
+              .height(24)
+              .onClick(() => {
+                this.navPathStack.pop();
+              })
 
-            Text('Hitokoto')
-              .fontSize(24)
+            Text($r('app.string.about_text'))
+              .fontSize(20)
               .fontWeight(FontWeight.Bold)
               .fontColor($r('app.color.colorText1'))
-              .margin({ top: 12 })
+              .margin({ left: 16 })
 
-            Text('一句话')
-              .fontSize(14)
-              .fontColor($r('app.color.colorText3'))
-              .margin({ top: 4 })
-
-            Text('v3.0.0 · HarmonyOS 6')
-              .fontSize(12)
-              .fontColor($r('app.color.colorText4'))
-              .margin({ top: 8 })
+            Blank()
           }
           .width('100%')
-          .padding({ top: 32, bottom: 32 })
-          .alignItems(HorizontalAlign.Center)
+          .height(UiStyle.HEADER_ROW_HEIGHT)
+          .padding({ left: UiStyle.PAGE_SIDE, right: UiStyle.PAGE_SIDE })
 
-          // 应用介绍
-          Column() {
-            Text($r('app.string.about_introduction'))
-              .fontSize(15)
-              .fontColor($r('app.color.colorText2'))
-              .lineHeight(24)
+          Scroll() {
+            Column() {
+              this.AboutContent()
+            }
+            .width('100%')
+            .alignItems(HorizontalAlign.Center)
           }
           .width('100%')
-          .padding({ left: 24, right: 24, top: 16, bottom: 16 })
-          .backgroundColor($r('app.color.colorCard'))
-          .borderRadius(UiStyle.DIALOG_RADIUS)
-          .border({ width: 1, color: UiStyle.CARD_BORDER })
-          .margin({ left: 20, right: 20 })
-
-          // 许可证
-          Column() {
-            Text('许可证')
-              .fontSize(13)
-              .fontWeight(FontWeight.Medium)
-              .fontColor($r('app.color.colorPrimary'))
-              .width('100%')
-              .padding({ bottom: 8 })
-
-            Text('Hitokoto 遵循 LGPL v3 许可证，在这个基础上你可以修改它。')
-              .fontSize(14)
-              .fontColor($r('app.color.colorText2'))
-              .lineHeight(22)
-          }
-          .width('100%')
-          .padding(20)
-          .backgroundColor($r('app.color.colorCard'))
-          .borderRadius(UiStyle.DIALOG_RADIUS)
-          .border({ width: 1, color: UiStyle.CARD_BORDER })
-          .margin({ left: 20, right: 20, top: 20 })
-
-          // 致谢
-          Column() {
-            Text('致谢')
-              .fontSize(13)
-              .fontWeight(FontWeight.Medium)
-              .fontColor($r('app.color.colorPrimary'))
-              .width('100%')
-              .padding({ bottom: 8 })
-
-            Text('在开发过程中，我们特别感谢：')
-              .fontSize(14)
-              .fontColor($r('app.color.colorText2'))
-
-            Text('lz233 · XiaoMengXinX · Kanglyh · NekoInverter · RebornQ')
-              .fontSize(14)
-              .fontWeight(FontWeight.Medium)
-              .fontColor($r('app.color.colorText1'))
-              .margin({ top: 8 })
-          }
-          .width('100%')
-          .padding(20)
-          .backgroundColor($r('app.color.colorCard'))
-          .borderRadius(UiStyle.DIALOG_RADIUS)
-          .border({ width: 1, color: UiStyle.CARD_BORDER })
-          .margin({ left: 20, right: 20, top: 20 })
-
-          // 相关链接
-          Column() {
-            Text('相关链接')
-              .fontSize(13)
-              .fontWeight(FontWeight.Medium)
-              .fontColor($r('app.color.colorPrimary'))
-              .width('100%')
-              .padding({ bottom: 8 })
-
-            this.LinkItem('项目主页', 'https://github.com/lvcdy/OneText_For_Harmonry')
-            this.LinkItem('使用API地址', 'https://v1.hitokoto.cn')
-          }
-          .width('100%')
-          .padding(20)
-          .backgroundColor($r('app.color.colorCard'))
-          .borderRadius(UiStyle.DIALOG_RADIUS)
-          .border({ width: 1, color: UiStyle.CARD_BORDER })
-          .margin({ left: 20, right: 20, top: 20 })
-
-          // 依赖项目
-          Column() {
-            Text('本项目的开发离不开以下项目：')
-              .fontSize(13)
-              .fontWeight(FontWeight.Medium)
-              .fontColor($r('app.color.colorPrimary'))
-              .width('100%')
-              .padding({ bottom: 8 })
-
-            Text('HarmonyOS · ArkUI · ArkTS · Material Design Icons')
-              .fontSize(13)
-              .fontColor($r('app.color.colorText3'))
-              .lineHeight(22)
-          }
-          .width('100%')
-          .padding(20)
-          .backgroundColor($r('app.color.colorCard'))
-          .borderRadius(UiStyle.DIALOG_RADIUS)
-          .border({ width: 1, color: UiStyle.CARD_BORDER })
-          .margin({ left: 20, right: 20, top: 20, bottom: 20 })
+          .layoutWeight(1)
+          .scrollBar(BarState.Off)
+          .edgeEffect(EdgeEffect.Spring)
         }
         .width('100%')
-      }
-      .width('100%')
-      .layoutWeight(1)
-      .scrollBar(BarState.Off)
-      .edgeEffect(EdgeEffect.Spring)
+        .height('100%')
+        .padding({ top: UiStyle.PAGE_TOP })
       }
       .width('100%')
       .height('100%')
-      .padding({ top: UiStyle.PAGE_TOP })
-      .backgroundColor(UiStyle.PAGE_BG)
     }
     .hideTitleBar(true)
+    .backgroundColor(UiStyle.TRANSPARENT)
+    .onAreaChange((oldValue: Area, newValue: Area) => {
+      this.pageWidth = Number.parseFloat(String(newValue.width));
+    })
+  }
+
+  @Builder
+  AboutContent() {
+    Column() {
+      Column() {
+        Image($r('app.media.app_icon'))
+          .width(80)
+          .height(80)
+          .borderRadius(16)
+
+        Text('Hitokoto')
+          .fontSize(24)
+          .fontWeight(FontWeight.Bold)
+          .fontColor($r('app.color.colorText1'))
+          .margin({ top: 12 })
+
+        Text('一句话')
+          .fontSize(14)
+          .fontColor($r('app.color.colorText3'))
+          .margin({ top: 4 })
+
+        Text(`v${APP_VERSION_NAME} · HarmonyOS 6`)
+          .fontSize(12)
+          .fontColor($r('app.color.colorText4'))
+          .margin({ top: 8 })
+      }
+      .width('100%')
+      .padding({ top: 32, bottom: 32 })
+      .alignItems(HorizontalAlign.Center)
+
+      this.AboutInfoCard($r('app.string.about_introduction'))
+      this.AboutTextCard('许可证', 'Hitokoto 遵循 LGPL v3 许可证，在这个基础上你可以修改它。')
+      this.AboutTextCard('致谢', '在开发过程中，我们特别感谢：\nlz233 · XiaoMengXinX · Kanglyh · NekoInverter · RebornQ')
+
+      Column() {
+        Text('相关链接')
+          .fontSize(13)
+          .fontWeight(FontWeight.Medium)
+          .fontColor($r('app.color.colorPrimary'))
+          .width('100%')
+          .padding({ bottom: 8 })
+
+        this.LinkItem('项目主页', 'https://github.com/lvcdy/OneText_For_Harmonry')
+        this.LinkItem('使用API地址', 'https://v1.hitokoto.cn')
+        this.LinkItem('隐私政策', 'https://agreement-drcn.hispace.dbankcloud.cn/index.html?lang=zh&agreementId=1936386579987723392')
+      }
+      .width('100%')
+      .padding(20)
+      .backgroundColor(this.getGlassCardColor())
+      .borderRadius(UiStyle.DIALOG_RADIUS)
+      .border({ width: 1, color: this.getGlassCardBorder() })
+      .margin({ left: 20, right: 20, top: 20 })
+
+      this.AboutTextCard('本项目的开发离不开以下项目：', 'HarmonyOS · ArkUI · ArkTS · Material Design Icons')
+    }
+    .width('100%')
+    .constraintSize({ maxWidth: this.getContentMaxWidth() })
+  }
+
+  @Builder
+  AboutInfoCard(text: ResourceStr) {
+    Column() {
+      Text(text)
+        .fontSize(15)
+        .fontColor($r('app.color.colorText2'))
+        .lineHeight(24)
+    }
+    .width('100%')
+    .padding({ left: 24, right: 24, top: 16, bottom: 16 })
+    .backgroundColor(this.getGlassCardColor())
+    .borderRadius(UiStyle.DIALOG_RADIUS)
+    .border({ width: 1, color: this.getGlassCardBorder() })
+    .margin({ left: 20, right: 20 })
+  }
+
+  @Builder
+  AboutTextCard(title: string, text: string) {
+    Column() {
+      Text(title)
+        .fontSize(13)
+        .fontWeight(FontWeight.Medium)
+        .fontColor($r('app.color.colorPrimary'))
+        .width('100%')
+        .padding({ bottom: 8 })
+
+      Text(text)
+        .fontSize(14)
+        .fontColor($r('app.color.colorText2'))
+        .lineHeight(22)
+    }
+    .width('100%')
+    .padding(20)
+    .backgroundColor(this.getGlassCardColor())
+    .borderRadius(UiStyle.DIALOG_RADIUS)
+    .border({ width: 1, color: this.getGlassCardBorder() })
+    .margin({ left: 20, right: 20, top: 20 })
   }
 
   @Builder

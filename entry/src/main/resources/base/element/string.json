@@ -45,6 +45,10 @@
             "value": "Save failed"
         },
         {
+            "name": "save_permission_denied",
+            "value": "Photos permission is required to save images."
+        },
+        {
             "name": "permission_write_imagevideo_reason",
             "value": "Allow Hitokoto to save quote screenshots to Photos."
         },
@@ -227,6 +231,42 @@
         {
             "name": "chinese_type",
             "value": "Language"
+        },
+        {
+            "name": "adaptive_grip",
+            "value": "Adaptive Grip"
+        },
+        {
+            "name": "background_mode",
+            "value": "App Background"
+        },
+        {
+            "name": "background_local_image",
+            "value": "Local Image"
+        },
+        {
+            "name": "background_pick_image",
+            "value": "Choose"
+        },
+        {
+            "name": "background_api_placeholder",
+            "value": "Direct image URL or image API"
+        },
+        {
+            "name": "background_apply_api",
+            "value": "Apply Image API"
+        },
+        {
+            "name": "background_image_selected",
+            "value": "Background image selected"
+        },
+        {
+            "name": "background_image_failed",
+            "value": "Failed to select background image"
+        },
+        {
+            "name": "background_api_empty",
+            "value": "Enter an image URL or API first"
         },
         {
             "name": "welcome_title",

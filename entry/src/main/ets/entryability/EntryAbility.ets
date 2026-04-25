@@ -3,6 +3,7 @@ import { hilog } from '@kit.PerformanceAnalysisKit';
 import { window } from '@kit.ArkUI';
 import { PreferencesUtil } from '../common/PreferencesUtil';
 import { AppLanguageUtil } from '../common/AppLanguageUtil';
+import { AppDisplayModeUtil } from '../common/AppDisplayModeUtil';
 
 const TAG = 'EntryAbility';
 const DOMAIN = 0x0000;
@@ -24,13 +25,18 @@ export default class EntryAbility extends UIAbility {
     hilog.info(DOMAIN, TAG, 'onWindowStageCreate');
 
     // 初始化偏好设置
-    await PreferencesUtil.getInstance().init(this.context);
-    AppLanguageUtil.apply(this.context, await PreferencesUtil.getInstance().getNumber(AppLanguageUtil.PREF_KEY, 0));
+    const prefs = PreferencesUtil.getInstance();
+    await prefs.init(this.context);
+    AppLanguageUtil.apply(this.context, await prefs.getNumber(AppLanguageUtil.PREF_KEY, 0));
+    AppDisplayModeUtil.apply(this.context, await prefs.getNumber(AppDisplayModeUtil.PREF_KEY, 0));
 
-    // 交给系统安全区布局，页面内只维护视觉留白，避免不同设备顶部间距忽高忽低。
+    // 开启全屏沉浸式布局，让页面内容延伸到系统栏区域。
     const mainWindow = await windowStage.getMainWindow();
+    await mainWindow.setWindowLayoutFullScreen(true);
     const sysBarProps: window.SystemBarProperties = {
+      statusBarColor: '#00000000',
       statusBarContentColor: '#000000',
+      navigationBarColor: '#00000000',
       navigationBarContentColor: '#000000'
     };
     await mainWindow.setWindowSystemBarProperties(sysBarProps);

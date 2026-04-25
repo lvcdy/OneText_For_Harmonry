@@ -1,6 +1,11 @@
 import { promptAction } from '@kit.ArkUI';
+import { AppBackgroundLayer } from '../common/AppBackgroundUtil';
 import { PreferencesUtil } from '../common/PreferencesUtil';
 import { UiStyle } from '../common/UiStyle';
+
+const WELCOME_RESPONSIVE_WIDE_WIDTH: number = 720;
+const WELCOME_CONTENT_MAX_WIDTH_COMPACT: number = 560;
+const WELCOME_CONTENT_MAX_WIDTH_WIDE: number = 680;
 
 /**
  * 首次启动引导页 - 对齐原版 WelcomeActivity 的核心流程
@@ -9,8 +14,29 @@ import { UiStyle } from '../common/UiStyle';
 export struct WelcomePageContent {
   @Consume('navPathStack') navPathStack: NavPathStack;
   @State currentStep: number = 0;
+  @State pageWidth: number = 0;
 
   private prefs: PreferencesUtil = PreferencesUtil.getInstance();
+
+  private isWideLayout(): boolean {
+    return this.pageWidth >= WELCOME_RESPONSIVE_WIDE_WIDTH;
+  }
+
+  private getContentMaxWidth(): number {
+    return this.isWideLayout() ? WELCOME_CONTENT_MAX_WIDTH_WIDE : WELCOME_CONTENT_MAX_WIDTH_COMPACT;
+  }
+
+  private getGlassCardColor(): ResourceColor {
+    return UiStyle.GLASS_CARD_BG;
+  }
+
+  private getGlassControlColor(): ResourceColor {
+    return UiStyle.GLASS_CONTROL_BG;
+  }
+
+  private getGlassSelectedColor(): ResourceColor {
+    return UiStyle.GLASS_SELECTED_BG;
+  }
 
   private async finishWelcome(): Promise<void> {
     await this.prefs.putBoolean('first_run', false);
@@ -20,42 +46,61 @@ export struct WelcomePageContent {
 
   build() {
     NavDestination() {
-      Column() {
-        Scroll() {
-          Column() {
-            this.BrandHeader()
-            this.QuotePreview()
+      Stack() {
+        AppBackgroundLayer()
 
+        Column() {
+          Scroll() {
             Column() {
-              this.StepItem(0, $r('app.string.welcome_step1_title'), $r('app.string.welcome_step1_desc'))
-              this.StepItem(1, $r('app.string.welcome_step2_title'), $r('app.string.welcome_step2_desc'))
-              this.StepItem(2, $r('app.string.welcome_step3_title'), $r('app.string.welcome_step3_desc'))
+              this.WelcomeContent()
             }
             .width('100%')
-            .padding({ left: 14, right: 14, top: 14, bottom: 14 })
-            .backgroundColor($r('app.color.colorCard'))
-            .border({ width: 1, color: UiStyle.CARD_BORDER })
-            .borderRadius(UiStyle.CARD_RADIUS)
-            .shadow({ radius: 18, color: UiStyle.CARD_SHADOW, offsetX: 0, offsetY: 6 })
-            .margin({ top: UiStyle.CARD_GAP })
-
-            this.ProgressDots()
+            .alignItems(HorizontalAlign.Center)
           }
           .width('100%')
-          .padding({ left: UiStyle.PAGE_SIDE, right: UiStyle.PAGE_SIDE, top: UiStyle.PAGE_TOP, bottom: UiStyle.BOTTOM_ACTION_HEIGHT + 12 })
+          .layoutWeight(1)
+          .scrollBar(BarState.Off)
+          .edgeEffect(EdgeEffect.Spring)
+
+          this.BottomActions()
         }
         .width('100%')
-        .layoutWeight(1)
-        .scrollBar(BarState.Off)
-        .edgeEffect(EdgeEffect.Spring)
-
-        this.BottomActions()
+        .height('100%')
       }
       .width('100%')
       .height('100%')
-      .backgroundColor(UiStyle.PAGE_BG)
     }
     .hideTitleBar(true)
+    .backgroundColor(UiStyle.TRANSPARENT)
+    .onAreaChange((oldValue: Area, newValue: Area) => {
+      this.pageWidth = Number.parseFloat(String(newValue.width));
+    })
+  }
+
+  @Builder
+  WelcomeContent() {
+    Column() {
+      this.BrandHeader()
+      this.QuotePreview()
+
+      Column() {
+        this.StepItem(0, $r('app.string.welcome_step1_title'), $r('app.string.welcome_step1_desc'))
+        this.StepItem(1, $r('app.string.welcome_step2_title'), $r('app.string.welcome_step2_desc'))
+        this.StepItem(2, $r('app.string.welcome_step3_title'), $r('app.string.welcome_step3_desc'))
+      }
+      .width('100%')
+      .padding({ left: 14, right: 14, top: 14, bottom: 14 })
+      .backgroundColor(this.getGlassCardColor())
+      .border({ width: 1, color: UiStyle.GLASS_CARD_BORDER })
+      .borderRadius(UiStyle.CARD_RADIUS)
+      .shadow({ radius: 18, color: UiStyle.GLASS_CARD_SHADOW, offsetX: 0, offsetY: 6 })
+      .margin({ top: UiStyle.CARD_GAP })
+
+      this.ProgressDots()
+    }
+    .width('100%')
+    .constraintSize({ maxWidth: this.getContentMaxWidth() })
+    .padding({ left: UiStyle.PAGE_SIDE, right: UiStyle.PAGE_SIDE, top: UiStyle.PAGE_TOP, bottom: UiStyle.BOTTOM_ACTION_HEIGHT + 12 })
   }
 
   @Builder
@@ -65,7 +110,7 @@ export struct WelcomePageContent {
         .width(56)
         .height(56)
         .borderRadius(16)
-        .backgroundColor('#EEF3FF')
+        .backgroundColor($r('app.color.colorSelectedBg'))
 
       Column() {
         Text('Hitokoto')
@@ -144,10 +189,10 @@ export struct WelcomePageContent {
       }
       .width('100%')
       .height(190)
-      .backgroundColor($r('app.color.colorCard'))
-      .border({ width: 1, color: UiStyle.CARD_BORDER })
+      .backgroundColor(this.getGlassCardColor())
+      .border({ width: 1, color: UiStyle.GLASS_CARD_BORDER })
       .borderRadius(UiStyle.CARD_RADIUS)
-      .shadow({ radius: 22, color: UiStyle.CARD_SHADOW, offsetX: 0, offsetY: 8 })
+      .shadow({ radius: 22, color: UiStyle.GLASS_CARD_SHADOW, offsetX: 0, offsetY: 8 })
       .margin({ top: 22 })
     }
     .width('100%')
@@ -166,7 +211,7 @@ export struct WelcomePageContent {
       .width(34)
       .height(34)
       .borderRadius(17)
-      .backgroundColor(index === this.currentStep ? $r('app.color.colorPrimary') : '#EEF3FF')
+      .backgroundColor(index === this.currentStep ? $r('app.color.colorPrimary') : $r('app.color.colorSelectedBg'))
       .justifyContent(FlexAlign.Center)
       .alignItems(HorizontalAlign.Center)
 
@@ -191,7 +236,7 @@ export struct WelcomePageContent {
     .width('100%')
     .padding({ left: 12, right: 12, top: 14, bottom: 14 })
     .borderRadius(20)
-    .backgroundColor(index === this.currentStep ? '#F5F8FF' : '#00FFFFFF')
+    .backgroundColor(index === this.currentStep ? this.getGlassSelectedColor() : UiStyle.TRANSPARENT)
     .onClick(() => {
       this.currentStep = index;
     })
@@ -223,8 +268,8 @@ export struct WelcomePageContent {
           .fontSize(15)
           .fontWeight(FontWeight.Medium)
           .fontColor($r('app.color.colorPrimary'))
-          .backgroundColor($r('app.color.colorCard'))
-          .border({ width: 1, color: '#C9D6FF' })
+          .backgroundColor(this.getGlassControlColor())
+          .border({ width: 1, color: UiStyle.GLASS_CARD_BORDER })
           .height(48)
           .layoutWeight(1)
           .margin({ right: 8 })
@@ -260,7 +305,8 @@ export struct WelcomePageContent {
     }
     .width('100%')
     .height(UiStyle.BOTTOM_ACTION_HEIGHT)
+    .constraintSize({ maxWidth: this.getContentMaxWidth() })
     .padding({ left: UiStyle.PAGE_SIDE, right: UiStyle.PAGE_SIDE, top: 12, bottom: 18 })
-    .backgroundColor(UiStyle.PAGE_BG)
-    }
+    .backgroundColor(this.getGlassCardColor())
+  }
 }
