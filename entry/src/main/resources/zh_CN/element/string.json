@@ -121,6 +121,50 @@
             "value": "关于"
         },
         {
+            "name": "tab_home",
+            "value": "主页"
+        },
+        {
+            "name": "tab_mine",
+            "value": "我的"
+        },
+        {
+            "name": "home_subtitle",
+            "value": "把一句话留在今天"
+        },
+        {
+            "name": "font_style",
+            "value": "字体样式"
+        },
+        {
+            "name": "huawei_login_title",
+            "value": "使用华为账号登录"
+        },
+        {
+            "name": "huawei_login_desc",
+            "value": "登录后显示头像和昵称"
+        },
+        {
+            "name": "huawei_login_button",
+            "value": "使用华为账号登录"
+        },
+        {
+            "name": "mine_settings_desc",
+            "value": "订阅源、桌面卡片与应用偏好"
+        },
+        {
+            "name": "logout_title",
+            "value": "退出登录"
+        },
+        {
+            "name": "logout_desc",
+            "value": "清除本机保存的华为账号信息"
+        },
+        {
+            "name": "welcome_start",
+            "value": "开始使用"
+        },
+        {
             "name": "about_introduction",
             "value": "一言是一个简洁的小应用，能在启动器上通过小组件显示一些自定义的句子。你还可以在应用中生成句子截图，并保存或分享。"
         },
@@ -186,7 +230,7 @@
         },
         {
             "name": "chinese_type",
-            "value": "中文类型"
+            "value": "语言"
         },
         {
             "name": "welcome_title",

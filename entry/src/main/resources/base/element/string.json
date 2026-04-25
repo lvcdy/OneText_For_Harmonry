@@ -121,6 +121,50 @@
             "value": "About"
         },
         {
+            "name": "tab_home",
+            "value": "Home"
+        },
+        {
+            "name": "tab_mine",
+            "value": "Mine"
+        },
+        {
+            "name": "home_subtitle",
+            "value": "Keep one sentence for today"
+        },
+        {
+            "name": "font_style",
+            "value": "Font Style"
+        },
+        {
+            "name": "huawei_login_title",
+            "value": "Sign in with HUAWEI ID"
+        },
+        {
+            "name": "huawei_login_desc",
+            "value": "Show your avatar and nickname after sign-in"
+        },
+        {
+            "name": "huawei_login_button",
+            "value": "Sign in with HUAWEI ID"
+        },
+        {
+            "name": "mine_settings_desc",
+            "value": "Feeds, widgets, and app preferences"
+        },
+        {
+            "name": "logout_title",
+            "value": "Sign out"
+        },
+        {
+            "name": "logout_desc",
+            "value": "Clear locally saved HUAWEI ID information"
+        },
+        {
+            "name": "welcome_start",
+            "value": "Get Started"
+        },
+        {
             "name": "about_introduction",
             "value": "OneText is a neat little application that can display some custom sentences through widgets on the launcher. You can also generate screenshots of sentences in the app and save or share them."
         },
@@ -186,7 +230,7 @@
         },
         {
             "name": "chinese_type",
-            "value": "Chinese Type"
+            "value": "Language"
         },
         {
             "name": "welcome_title",

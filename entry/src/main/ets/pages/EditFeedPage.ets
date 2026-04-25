@@ -1,7 +1,7 @@
 import { common } from '@kit.AbilityKit';
 import { promptAction } from '@kit.ArkUI';
 import { CoreUtil } from '../common/CoreUtil';
-import { PreferencesUtil } from '../common/PreferencesUtil';
+import { UiStyle } from '../common/UiStyle';
 import { FeedConfig } from '../model/DataModels';
 
 /**
@@ -15,11 +15,14 @@ export struct EditFeedPageContent {
   @State newFeedName: string = '';
   @State newFeedUrl: string = '';
   @State newFeedType: number = 0; // 0: remote, 1: internet
+  @State showEditDialog: boolean = false;
+  @State editFeedIndex: number = -1;
+  @State editFeedName: string = '';
+  @State editFeedUrl: string = '';
   @Consume('navPathStack') navPathStack: NavPathStack;
 
   private context: common.UIAbilityContext = getContext(this) as common.UIAbilityContext;
   private coreUtil: CoreUtil = new CoreUtil(this.context);
-  private prefs: PreferencesUtil = PreferencesUtil.getInstance();
   private feedTypes: string[] = ['远程 JSON', 'API 接口'];
 
   async aboutToAppear(): Promise<void> {
@@ -67,8 +70,50 @@ export struct EditFeedPageContent {
     const feedType = this.newFeedType === 0 ? 'remote' : 'internet';
     await this.coreUtil.addFeed(this.newFeedName.trim(), feedType, this.newFeedUrl.trim());
     this.showAddDialog = false;
+    this.resetAddFeedForm();
+    await this.loadFeeds();
+    promptAction.showToast({ message: $r('app.string.succeed') });
+  }
+
+  private getFeedUrl(feed: FeedConfig): string {
+    return feed.feed_type === 'internet' ? (feed.api_url ?? feed.feed_url ?? '') : (feed.feed_url ?? feed.feed_path ?? '');
+  }
+
+  private resetAddFeedForm(): void {
     this.newFeedName = '';
     this.newFeedUrl = '';
+    this.newFeedType = 0;
+  }
+
+  private resetEditFeedForm(): void {
+    this.editFeedIndex = -1;
+    this.editFeedName = '';
+    this.editFeedUrl = '';
+  }
+
+  private showEditFeedDialog(index: number): void {
+    const feed = this.feeds[index];
+    this.editFeedIndex = index;
+    this.editFeedName = feed.feed_name;
+    this.editFeedUrl = this.getFeedUrl(feed);
+    this.showEditDialog = true;
+  }
+
+  private async saveEditFeed(): Promise<void> {
+    if (this.editFeedIndex < 0) {
+      return;
+    }
+    if (this.editFeedName.trim() === '') {
+      promptAction.showToast({ message: '请输入订阅源名称' });
+      return;
+    }
+    if (this.editFeedUrl.trim() === '') {
+      promptAction.showToast({ message: '请输入订阅源地址' });
+      return;
+    }
+    await this.coreUtil.updateFeed(this.editFeedIndex, this.editFeedName.trim(), this.editFeedUrl.trim());
+    this.showEditDialog = false;
+    this.resetEditFeedForm();
     await this.loadFeeds();
     promptAction.showToast({ message: $r('app.string.succeed') });
   }
@@ -101,8 +146,8 @@ export struct EditFeedPageContent {
           })
       }
       .width('100%')
-      .height(56)
-      .padding({ left: 16, right: 16 })
+      .height(UiStyle.HEADER_ROW_HEIGHT)
+      .padding({ left: UiStyle.PAGE_SIDE, right: UiStyle.PAGE_SIDE })
 
       // 订阅源列表
       List() {
@@ -115,7 +160,7 @@ export struct EditFeedPageContent {
                   .fontWeight(FontWeight.Medium)
                   .fontColor($r('app.color.colorText1'))
 
-                Text(item.feed_type === 'internet' ? (item.api_url ?? '') : (item.feed_url ?? item.feed_path ?? ''))
+                Text(this.getFeedUrl(item))
                   .fontSize(12)
                   .fontColor($r('app.color.colorText4'))
                   .margin({ top: 4 })
@@ -126,7 +171,7 @@ export struct EditFeedPageContent {
                   Text(item.feed_type === 'remote' ? '远程' : item.feed_type === 'internet' ? 'API' : '本地')
                     .fontSize(11)
                     .fontColor(Color.White)
-                    .backgroundColor(item.feed_type === 'internet' ? '#4CAF50' : '#2196F3')
+                    .backgroundColor(item.feed_type === 'internet' ? UiStyle.TAG_GREEN : UiStyle.TAG_BLUE)
                     .borderRadius(4)
                     .padding({ left: 6, right: 6, top: 2, bottom: 2 })
                     .margin({ top: 6 })
@@ -138,7 +183,7 @@ export struct EditFeedPageContent {
               Image($r('app.media.ic_delete'))
                 .width(20)
                 .height(20)
-                .fillColor('#FF5252')
+                .fillColor(UiStyle.DANGER)
                 .onClick(() => {
                   this.deleteFeed(index);
                 })
@@ -146,11 +191,17 @@ export struct EditFeedPageContent {
             .width('100%')
             .padding({ left: 18, right: 18, top: 16, bottom: 16 })
             .backgroundColor($r('app.color.colorCard'))
-            .borderRadius(22)
-            .shadow({ radius: 18, color: '#10000000', offsetX: 0, offsetY: 8 })
+            .borderRadius(UiStyle.DIALOG_RADIUS)
+            .shadow({ radius: 18, color: UiStyle.CARD_SHADOW, offsetX: 0, offsetY: 8 })
+            .gesture(
+              LongPressGesture()
+                .onAction(() => {
+                  this.showEditFeedDialog(index);
+                })
+            )
           }
           .margin({ left: 18, right: 18, top: 12 })
-        })
+        }, (item: FeedConfig, index: number) => `${index}-${item.feed_name}-${this.getFeedUrl(item)}`)
       }
       .width('100%')
       .layoutWeight(1)
@@ -218,8 +269,7 @@ export struct EditFeedPageContent {
                 .layoutWeight(1)
                 .onClick(() => {
                   this.showAddDialog = false;
-                  this.newFeedName = '';
-                  this.newFeedUrl = '';
+                  this.resetAddFeedForm();
                 })
 
               Button('添加')
@@ -240,23 +290,94 @@ export struct EditFeedPageContent {
           .width('90%')
           .padding(24)
           .backgroundColor($r('app.color.colorCard'))
-          .borderRadius(24)
-          .shadow({ radius: 22, color: '#24000000', offsetX: 0, offsetY: 10 })
+          .borderRadius(UiStyle.DIALOG_RADIUS)
+          .shadow({ radius: 22, color: UiStyle.CARD_SHADOW, offsetX: 0, offsetY: 10 })
         }
         .width('100%')
         .height('100%')
         .justifyContent(FlexAlign.Center)
-        .backgroundColor('#80000000')
+        .backgroundColor(UiStyle.OVERLAY_BG)
         .position({ x: 0, y: 0 })
         .onClick(() => {
           this.showAddDialog = false;
+          this.resetAddFeedForm();
         })
+      }
+      if (this.showEditDialog) {
+        Column() {
+          Column() {
+            Text('编辑订阅源')
+              .fontSize(18)
+              .fontWeight(FontWeight.Bold)
+              .fontColor($r('app.color.colorText1'))
+              .width('100%')
+              .margin({ bottom: 16 })
+
+            TextInput({ placeholder: '订阅源名称', text: this.editFeedName })
+              .width('100%')
+              .height(44)
+              .fontSize(14)
+              .margin({ bottom: 12 })
+              .onChange((value: string) => {
+                this.editFeedName = value;
+              })
+
+            TextInput({ placeholder: '订阅源地址', text: this.editFeedUrl })
+              .width('100%')
+              .height(44)
+              .fontSize(14)
+              .margin({ bottom: 20 })
+              .onChange((value: string) => {
+                this.editFeedUrl = value;
+              })
+
+            Row() {
+              Button('取消')
+                .type(ButtonType.Normal)
+                .borderRadius(5)
+                .fontSize(14)
+                .fontColor($r('app.color.colorText2'))
+                .backgroundColor(Color.Transparent)
+                .border({ width: 1.05, color: $r('app.color.colorMD2BG') })
+                .height(40)
+                .layoutWeight(1)
+                .onClick(() => {
+                  this.showEditDialog = false;
+                  this.resetEditFeedForm();
+                })
+
+              Button('保存')
+                .type(ButtonType.Normal)
+                .borderRadius(5)
+                .fontSize(14)
+                .fontColor(Color.White)
+                .backgroundColor($r('app.color.colorPrimary'))
+                .height(40)
+                .layoutWeight(1)
+                .margin({ left: 12 })
+                .onClick(() => {
+                  this.saveEditFeed();
+                })
+            }
+            .width('100%')
+          }
+          .width('90%')
+          .padding(24)
+          .backgroundColor($r('app.color.colorCard'))
+          .borderRadius(UiStyle.DIALOG_RADIUS)
+          .shadow({ radius: 22, color: UiStyle.CARD_SHADOW, offsetX: 0, offsetY: 10 })
+        }
+        .width('100%')
+        .height('100%')
+        .justifyContent(FlexAlign.Center)
+        .backgroundColor(UiStyle.OVERLAY_BG)
+        .position({ x: 0, y: 0 })
       }
       }
       .width('100%')
       .height('100%')
-      .padding({ top: 36 })
-      .backgroundColor($r('app.color.colorBackground'))
+      .padding({ top: UiStyle.PAGE_TOP })
+      .backgroundColor(UiStyle.PAGE_BG)
     }
     .hideTitleBar(true)
   }

@@ -19,49 +19,55 @@ struct WidgetCard {
     return value === 'true';
   }
 
+  private getPrimaryTextColor(): string {
+    return this.isEnabled(this.widgetDark) ? '#1C1C1C' : '#FFFFFF';
+  }
+
+  private getSecondaryTextColor(): string {
+    return this.isEnabled(this.widgetDark) ? '#434343' : '#FFFFFF';
+  }
+
+  @Builder
+  QuoteText(textAlign: TextAlign) {
+    Text(this.text)
+      .fontSize(15)
+      .fontColor(this.getPrimaryTextColor())
+      .textAlign(textAlign)
+      .maxLines(4)
+      .textOverflow({ overflow: TextOverflow.Ellipsis })
+      .width('100%')
+      .textShadow({
+        radius: this.isEnabled(this.widgetShadow) ? 8 : 0,
+        color: this.isEnabled(this.widgetShadow) ? '#B0000000' : '#00000000',
+        offsetX: 0,
+        offsetY: 0
+      })
+  }
+
+  @Builder
+  AuthorText() {
+    if (this.by !== '') {
+      Text(`—— ${this.by}`)
+        .fontSize(15)
+        .fontColor(this.getSecondaryTextColor())
+        .textAlign(TextAlign.End)
+        .width('100%')
+        .textShadow({
+          radius: this.isEnabled(this.widgetShadow) ? 8 : 0,
+          color: this.isEnabled(this.widgetShadow) ? '#B0000000' : '#00000000',
+          offsetX: 0,
+          offsetY: 0
+        })
+    }
+  }
+
   build() {
     Column() {
       if (this.isEnabled(this.widgetCenter)) {
-        Text(this.text)
-          .fontSize(15)
-          .fontColor(this.isEnabled(this.widgetDark) ? '#1C1C1C' : '#FFFFFF')
-          .textAlign(TextAlign.Center)
-          .maxLines(4)
-          .textOverflow({ overflow: TextOverflow.Ellipsis })
-          .width('100%')
-          .textShadow({
-            radius: this.isEnabled(this.widgetShadow) ? 8 : 0,
-            color: this.isEnabled(this.widgetShadow) ? '#B0000000' : '#00000000',
-            offsetX: 0,
-            offsetY: 0
-          })
+        this.QuoteText(TextAlign.Center)
       } else {
-        Text(this.text)
-          .fontSize(15)
-          .fontColor(this.isEnabled(this.widgetDark) ? '#1C1C1C' : '#FFFFFF')
-          .textAlign(TextAlign.Start)
-          .maxLines(4)
-          .textOverflow({ overflow: TextOverflow.Ellipsis })
-          .textShadow({
-            radius: this.isEnabled(this.widgetShadow) ? 8 : 0,
-            color: this.isEnabled(this.widgetShadow) ? '#B0000000' : '#00000000',
-            offsetX: 0,
-            offsetY: 0
-          })
-
-        if (this.by !== '') {
-          Text(`—— ${this.by}`)
-            .fontSize(15)
-            .fontColor(this.isEnabled(this.widgetDark) ? '#434343' : '#FFFFFF')
-            .textAlign(TextAlign.End)
-            .width('100%')
-            .textShadow({
-              radius: this.isEnabled(this.widgetShadow) ? 8 : 0,
-              color: this.isEnabled(this.widgetShadow) ? '#B0000000' : '#00000000',
-              offsetX: 0,
-              offsetY: 0
-            })
-        }
+        this.QuoteText(TextAlign.Start)
+        this.AuthorText()
       }
     }
     .width('100%')

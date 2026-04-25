@@ -2,6 +2,7 @@ import { AbilityConstant, UIAbility, Want } from '@kit.AbilityKit';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { window } from '@kit.ArkUI';
 import { PreferencesUtil } from '../common/PreferencesUtil';
+import { AppLanguageUtil } from '../common/AppLanguageUtil';
 
 const TAG = 'EntryAbility';
 const DOMAIN = 0x0000;
@@ -24,10 +25,10 @@ export default class EntryAbility extends UIAbility {
 
     // 初始化偏好设置
     await PreferencesUtil.getInstance().init(this.context);
+    AppLanguageUtil.apply(this.context, await PreferencesUtil.getInstance().getNumber(AppLanguageUtil.PREF_KEY, 0));
 
-    // HarmonyOS 6: 设置沉浸式状态栏
+    // 交给系统安全区布局，页面内只维护视觉留白，避免不同设备顶部间距忽高忽低。
     const mainWindow = await windowStage.getMainWindow();
-    await mainWindow.setWindowLayoutFullScreen(true);
     const sysBarProps: window.SystemBarProperties = {
       statusBarContentColor: '#000000',
       navigationBarContentColor: '#000000'

@@ -34,20 +34,11 @@ OneText 的 HarmonyOS 版本，原项目来自 [OneText_For_Android](https://git
 2. 同步依赖后，执行构建：
 
 ```bash
-hvigorw clean --mode module -p product=default assembleHap
+hvigorw clean --mode module -p product=default -p buildMode=release assembleHap
 ```
 
 3. 在 DevEco Studio 中选择 `entry` 模块运行，或将生成的 HAP 安装到设备/模拟器。
-
-## 签名与证书
-
-本项目已经在 `build-profile.json5` 中配置了 HarmonyOS 签名信息，当前使用的是本机 DevEco Studio 生成的调试证书：
-
-- 签名别名为 `debugKey`。
-- 签名算法为 `SHA256withECDSA`。
-- 产品 `default` 已绑定到默认签名配置。
-
-如果你在另一台机器上打开这个仓库，需要重新生成或导入对应的 HarmonyOS 调试证书，并同步更新 `build-profile.json5` 中的路径。
+4. 如果要上传到 AppGallery Connect，请使用 `release` 构建模式生成的包，不要上传 `debug` 包；同时确保签名配置使用发布证书而不是本地调试证书。
 
 ## 页面与交互
 
@@ -76,3 +67,7 @@ hvigorw clean --mode module -p product=default assembleHap
 - 项目目标是 HarmonyOS 6 的 Stage 模式应用。
 - 首页和设置页都支持左右手握持检测，用于动态调整界面布局。
 - 如果订阅源文件缺失，应用会自动初始化默认资源。
+
+## 许可证
+
+本项目采用 [GNU Lesser General Public License v3.0](./LICENSE) 许可发布。

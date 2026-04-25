@@ -1,0 +1,288 @@
+{
+    "string": [
+        {
+            "name": "module_desc",
+            "value": "一言主模組"
+        },
+        {
+            "name": "EntryAbility_desc",
+            "value": "一言主入口"
+        },
+        {
+            "name": "EntryAbility_label",
+            "value": "一言"
+        },
+        {
+            "name": "app_name",
+            "value": "一言"
+        },
+        {
+            "name": "widget_display_name",
+            "value": "一言小工具"
+        },
+        {
+            "name": "widget_desc",
+            "value": "在桌面顯示隨機句子"
+        },
+        {
+            "name": "record_time",
+            "value": "記錄於"
+        },
+        {
+            "name": "created_time",
+            "value": "創作於"
+        },
+        {
+            "name": "save_button",
+            "value": "儲存"
+        },
+        {
+            "name": "save_text",
+            "value": "儲存圖片"
+        },
+        {
+            "name": "save_succeed",
+            "value": "儲存成功"
+        },
+        {
+            "name": "save_fail",
+            "value": "儲存失敗"
+        },
+        {
+            "name": "permission_write_imagevideo_reason",
+            "value": "允許一言將句子截圖儲存到圖庫。"
+        },
+        {
+            "name": "refresh_button",
+            "value": "重新整理"
+        },
+        {
+            "name": "refresh_onetext_text",
+            "value": "來個新句子"
+        },
+        {
+            "name": "seal_text",
+            "value": "顯示一隻可愛的初音"
+        },
+        {
+            "name": "seal_button_ison",
+            "value": "隱藏"
+        },
+        {
+            "name": "seal_button_isoff",
+            "value": "顯示"
+        },
+        {
+            "name": "setting_title",
+            "value": "設定"
+        },
+        {
+            "name": "feed_text",
+            "value": "訂閱源"
+        },
+        {
+            "name": "feed_refresh_text",
+            "value": "來源重新整理時間："
+        },
+        {
+            "name": "widget_text",
+            "value": "小工具"
+        },
+        {
+            "name": "widget_dark",
+            "value": "暗色"
+        },
+        {
+            "name": "widget_refresh_text",
+            "value": "小工具重新整理時間："
+        },
+        {
+            "name": "widget_center",
+            "value": "置中"
+        },
+        {
+            "name": "widget_shadow",
+            "value": "陰影"
+        },
+        {
+            "name": "default_text",
+            "value": "預設"
+        },
+        {
+            "name": "onetext_text_size",
+            "value": "一言大小："
+        },
+        {
+            "name": "onetext_by_size",
+            "value": "作者文字大小："
+        },
+        {
+            "name": "about_text",
+            "value": "關於"
+        },
+        {
+            "name": "tab_home",
+            "value": "主頁"
+        },
+        {
+            "name": "tab_mine",
+            "value": "我的"
+        },
+        {
+            "name": "home_subtitle",
+            "value": "把一句話留在今天"
+        },
+        {
+            "name": "font_style",
+            "value": "字體樣式"
+        },
+        {
+            "name": "huawei_login_title",
+            "value": "使用華為帳號登入"
+        },
+        {
+            "name": "huawei_login_desc",
+            "value": "登入後顯示頭像和暱稱"
+        },
+        {
+            "name": "huawei_login_button",
+            "value": "使用華為帳號登入"
+        },
+        {
+            "name": "mine_settings_desc",
+            "value": "訂閱源、桌面卡片與應用偏好"
+        },
+        {
+            "name": "logout_title",
+            "value": "登出"
+        },
+        {
+            "name": "logout_desc",
+            "value": "清除本機儲存的華為帳號資訊"
+        },
+        {
+            "name": "welcome_start",
+            "value": "開始使用"
+        },
+        {
+            "name": "about_introduction",
+            "value": "一言是一個簡潔的小應用，能在啟動器上透過小工具顯示一些自訂句子。你也可以在應用中產生句子截圖，並儲存或分享。"
+        },
+        {
+            "name": "interface_text",
+            "value": "介面"
+        },
+        {
+            "name": "interface_daynight",
+            "value": "顯示模式"
+        },
+        {
+            "name": "share_text",
+            "value": "分享"
+        },
+        {
+            "name": "copied",
+            "value": "已複製"
+        },
+        {
+            "name": "refresh_failed",
+            "value": "更新失敗，請檢查網路。"
+        },
+        {
+            "name": "retry",
+            "value": "重試"
+        },
+        {
+            "name": "init_failed",
+            "value": "初始化失敗，請檢查網路。"
+        },
+        {
+            "name": "feed_auto_update",
+            "value": "自動更新"
+        },
+        {
+            "name": "feed_edit",
+            "value": "編輯"
+        },
+        {
+            "name": "feed_delete",
+            "value": "刪除"
+        },
+        {
+            "name": "delete_succeed",
+            "value": "刪除成功"
+        },
+        {
+            "name": "minute",
+            "value": "分"
+        },
+        {
+            "name": "hour",
+            "value": "時"
+        },
+        {
+            "name": "succeed",
+            "value": "成功"
+        },
+        {
+            "name": "behavior_text",
+            "value": "行為"
+        },
+        {
+            "name": "chinese_type",
+            "value": "語言"
+        },
+        {
+            "name": "welcome_title",
+            "value": "歡迎"
+        },
+        {
+            "name": "welcome_subtitle",
+            "value": "開始使用一言"
+        },
+        {
+            "name": "welcome_intro",
+            "value": "一言可以在桌面卡片顯示句子，也可以儲存截圖並管理多個訂閱源。"
+        },
+        {
+            "name": "welcome_step1_title",
+            "value": "1. 訂閱源"
+        },
+        {
+            "name": "welcome_step1_desc",
+            "value": "你可以選擇遠端 JSON 源或 API 源，並在設定裡隨時切換。"
+        },
+        {
+            "name": "welcome_step2_title",
+            "value": "2. 小工具"
+        },
+        {
+            "name": "welcome_step2_desc",
+            "value": "把一言卡片新增到桌面，並在設定裡調整它的樣式。"
+        },
+        {
+            "name": "welcome_step3_title",
+            "value": "3. 截圖"
+        },
+        {
+            "name": "welcome_step3_desc",
+            "value": "一鍵儲存目前句子的圖片，也可以輕觸複製文字。"
+        },
+        {
+            "name": "welcome_skip",
+            "value": "跳過"
+        },
+        {
+            "name": "welcome_next",
+            "value": "下一步"
+        },
+        {
+            "name": "welcome_done",
+            "value": "歡迎流程已完成"
+        },
+        {
+            "name": "welcome_hint",
+            "value": "如果需要，可以在專案說明中重新查看這些內容。"
+        }
+    ]
+}

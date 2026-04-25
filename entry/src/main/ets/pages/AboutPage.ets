@@ -1,3 +1,5 @@
+import { UiStyle } from '../common/UiStyle';
+
 /**
  * 关于页面 - 替代 Android AboutActivity
  * HarmonyOS 6: 使用 NavDestination 作为导航目的地
@@ -27,8 +29,8 @@ export struct AboutPageContent {
         Blank()
       }
       .width('100%')
-      .height(56)
-      .padding({ left: 16, right: 16 })
+      .height(UiStyle.HEADER_ROW_HEIGHT)
+      .padding({ left: UiStyle.PAGE_SIDE, right: UiStyle.PAGE_SIDE })
 
       Scroll() {
         Column() {
@@ -69,8 +71,8 @@ export struct AboutPageContent {
           .width('100%')
           .padding({ left: 24, right: 24, top: 16, bottom: 16 })
           .backgroundColor($r('app.color.colorCard'))
-          .borderRadius(5)
-          .border({ width: 1.05, color: $r('app.color.colorMD2BG') })
+          .borderRadius(UiStyle.DIALOG_RADIUS)
+          .border({ width: 1, color: UiStyle.CARD_BORDER })
           .margin({ left: 20, right: 20 })
 
           // 许可证
@@ -90,8 +92,8 @@ export struct AboutPageContent {
           .width('100%')
           .padding(20)
           .backgroundColor($r('app.color.colorCard'))
-          .borderRadius(5)
-          .border({ width: 1.05, color: $r('app.color.colorMD2BG') })
+          .borderRadius(UiStyle.DIALOG_RADIUS)
+          .border({ width: 1, color: UiStyle.CARD_BORDER })
           .margin({ left: 20, right: 20, top: 20 })
 
           // 致谢
@@ -116,8 +118,8 @@ export struct AboutPageContent {
           .width('100%')
           .padding(20)
           .backgroundColor($r('app.color.colorCard'))
-          .borderRadius(5)
-          .border({ width: 1.05, color: $r('app.color.colorMD2BG') })
+          .borderRadius(UiStyle.DIALOG_RADIUS)
+          .border({ width: 1, color: UiStyle.CARD_BORDER })
           .margin({ left: 20, right: 20, top: 20 })
 
           // 相关链接
@@ -136,8 +138,8 @@ export struct AboutPageContent {
           .width('100%')
           .padding(20)
           .backgroundColor($r('app.color.colorCard'))
-          .borderRadius(5)
-          .border({ width: 1.05, color: $r('app.color.colorMD2BG') })
+          .borderRadius(UiStyle.DIALOG_RADIUS)
+          .border({ width: 1, color: UiStyle.CARD_BORDER })
           .margin({ left: 20, right: 20, top: 20 })
 
           // 依赖项目
@@ -157,8 +159,8 @@ export struct AboutPageContent {
           .width('100%')
           .padding(20)
           .backgroundColor($r('app.color.colorCard'))
-          .borderRadius(5)
-          .border({ width: 1.05, color: $r('app.color.colorMD2BG') })
+          .borderRadius(UiStyle.DIALOG_RADIUS)
+          .border({ width: 1, color: UiStyle.CARD_BORDER })
           .margin({ left: 20, right: 20, top: 20, bottom: 20 })
         }
         .width('100%')
@@ -170,8 +172,8 @@ export struct AboutPageContent {
       }
       .width('100%')
       .height('100%')
-      .padding({ top: 36 })
-      .backgroundColor($r('app.color.colorBackground'))
+      .padding({ top: UiStyle.PAGE_TOP })
+      .backgroundColor(UiStyle.PAGE_BG)
     }
     .hideTitleBar(true)
   }

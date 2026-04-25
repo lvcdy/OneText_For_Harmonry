@@ -1,5 +1,6 @@
 import { promptAction } from '@kit.ArkUI';
 import { PreferencesUtil } from '../common/PreferencesUtil';
+import { UiStyle } from '../common/UiStyle';
 
 /**
  * 首次启动引导页 - 对齐原版 WelcomeActivity 的核心流程
@@ -20,119 +21,246 @@ export struct WelcomePageContent {
   build() {
     NavDestination() {
       Column() {
-        Row() {
-          Text($r('app.string.welcome_title'))
-            .fontSize(20)
-            .fontWeight(FontWeight.Bold)
-            .fontColor($r('app.color.colorText1'))
-          Blank()
-        }
-        .width('100%')
-        .padding({ left: 16, right: 16, top: 24, bottom: 16 })
+        Scroll() {
+          Column() {
+            this.BrandHeader()
+            this.QuotePreview()
 
-        Column() {
-          Text($r('app.string.welcome_subtitle'))
-            .fontSize(28)
-            .fontWeight(FontWeight.Bold)
-            .fontColor($r('app.color.colorPrimary'))
+            Column() {
+              this.StepItem(0, $r('app.string.welcome_step1_title'), $r('app.string.welcome_step1_desc'))
+              this.StepItem(1, $r('app.string.welcome_step2_title'), $r('app.string.welcome_step2_desc'))
+              this.StepItem(2, $r('app.string.welcome_step3_title'), $r('app.string.welcome_step3_desc'))
+            }
             .width('100%')
-            .margin({ bottom: 12 })
-
-          Text($r('app.string.welcome_intro'))
-            .fontSize(15)
-            .fontColor($r('app.color.colorText2'))
-            .lineHeight(24)
-
-          Text(`Step ${this.currentStep + 1}/3`)
-            .fontSize(12)
-            .fontColor($r('app.color.colorText4'))
-            .margin({ top: 12 })
-        }
-        .width('100%')
-        .padding(20)
-        .backgroundColor($r('app.color.colorCard'))
-        .borderRadius(5)
-        .border({ width: 1.05, color: $r('app.color.colorMD2BG') })
-        .margin({ left: 20, right: 20 })
-
-        Column() {
-          this.StepItem($r('app.string.welcome_step1_title'), $r('app.string.welcome_step1_desc'))
-          this.StepItem($r('app.string.welcome_step2_title'), $r('app.string.welcome_step2_desc'))
-          this.StepItem($r('app.string.welcome_step3_title'), $r('app.string.welcome_step3_desc'))
-        }
-        .width('100%')
-        .padding(20)
-        .backgroundColor($r('app.color.colorCard'))
-        .borderRadius(5)
-        .border({ width: 1.05, color: $r('app.color.colorMD2BG') })
-        .margin({ left: 20, right: 20, top: 20 })
-
-        Row() {
-          Button($r('app.string.welcome_skip'))
-            .type(ButtonType.Normal)
-            .borderRadius(5)
-            .fontSize(14)
-            .fontColor($r('app.color.colorText2'))
+            .padding({ left: 14, right: 14, top: 14, bottom: 14 })
             .backgroundColor($r('app.color.colorCard'))
-            .border({ width: 1.05, color: $r('app.color.colorMD2BG') })
-            .height(40)
-            .layoutWeight(1)
-            .margin({ right: 8 })
-            .onClick(async () => {
-              await this.finishWelcome();
-            })
+            .border({ width: 1, color: UiStyle.CARD_BORDER })
+            .borderRadius(UiStyle.CARD_RADIUS)
+            .shadow({ radius: 18, color: UiStyle.CARD_SHADOW, offsetX: 0, offsetY: 6 })
+            .margin({ top: UiStyle.CARD_GAP })
 
-          Button($r('app.string.welcome_next'))
-            .type(ButtonType.Normal)
-            .borderRadius(5)
-            .fontSize(14)
-            .fontColor(Color.White)
-            .backgroundColor($r('app.color.colorPrimary'))
-            .height(40)
-            .layoutWeight(1)
-            .margin({ left: 8 })
-            .onClick(async () => {
-              if (this.currentStep < 2) {
-                this.currentStep++;
-              } else {
-                await this.finishWelcome();
-              }
-            })
+            this.ProgressDots()
+          }
+          .width('100%')
+          .padding({ left: UiStyle.PAGE_SIDE, right: UiStyle.PAGE_SIDE, top: UiStyle.PAGE_TOP, bottom: UiStyle.BOTTOM_ACTION_HEIGHT + 12 })
         }
         .width('100%')
-        .padding({ left: 16, right: 16, top: 20 })
+        .layoutWeight(1)
+        .scrollBar(BarState.Off)
+        .edgeEffect(EdgeEffect.Spring)
 
-        Text($r('app.string.welcome_hint'))
-          .fontSize(12)
-          .fontColor($r('app.color.colorText4'))
-          .width('100%')
-          .textAlign(TextAlign.Center)
-          .padding({ top: 12, left: 16, right: 16 })
+        this.BottomActions()
       }
       .width('100%')
       .height('100%')
-      .backgroundColor($r('app.color.colorBackground'))
-      .padding({ top: 36, bottom: 24 })
+      .backgroundColor(UiStyle.PAGE_BG)
     }
     .hideTitleBar(true)
   }
 
   @Builder
-  StepItem(title: Resource, desc: Resource) {
-    Column() {
-      Text(title)
-        .fontSize(16)
-        .fontWeight(FontWeight.Medium)
-        .fontColor($r('app.color.colorText1'))
-        .width('100%')
-      Text(desc)
-        .fontSize(13)
-        .fontColor($r('app.color.colorText3'))
-        .lineHeight(22)
-        .width('100%')
-        .margin({ top: 6 })
+  BrandHeader() {
+    Row() {
+      Image($r('app.media.app_icon'))
+        .width(56)
+        .height(56)
+        .borderRadius(16)
+        .backgroundColor('#EEF3FF')
+
+      Column() {
+        Text('OneText')
+          .fontSize(28)
+          .fontWeight(FontWeight.Bold)
+          .fontColor($r('app.color.colorText1'))
+
+        Text($r('app.string.welcome_title'))
+          .fontSize(13)
+          .fontColor($r('app.color.colorText4'))
+          .margin({ top: 3 })
+      }
+      .alignItems(HorizontalAlign.Start)
+      .margin({ left: 14 })
+
+      Blank()
     }
     .width('100%')
-    .padding({ top: 10, bottom: 10 })
+    .height(60)
+    .alignItems(VerticalAlign.Center)
   }
+
+  @Builder
+  QuotePreview() {
+    Column() {
+      Text($r('app.string.welcome_subtitle'))
+        .fontSize(30)
+        .fontWeight(FontWeight.Bold)
+        .fontColor($r('app.color.colorText1'))
+        .width('100%')
+        .textAlign(TextAlign.Center)
+
+      Text($r('app.string.welcome_intro'))
+        .fontSize(15)
+        .fontColor($r('app.color.colorText3'))
+        .lineHeight(24)
+        .width('100%')
+        .textAlign(TextAlign.Center)
+        .margin({ top: 10 })
+
+      Stack() {
+        if (this.currentStep === 1) {
+          Image($r('app.media.moemiku'))
+            .width(118)
+            .height(118)
+            .opacity(0.2)
+            .position({ x: 190, y: 44 })
+        }
+
+        Column() {
+          Text('“')
+            .fontSize(42)
+            .fontColor('#D6E1FF')
+            .height(36)
+            .width('100%')
+            .textAlign(TextAlign.Start)
+
+          Text(this.currentStep === 0 ? '把一句话留在今天' : (this.currentStep === 1 ? '把喜欢的文字放到桌面' : '让文字更像你的风格'))
+            .fontSize(21)
+            .fontWeight(FontWeight.Medium)
+            .fontColor($r('app.color.colorText1'))
+            .lineHeight(32)
+            .width('100%')
+            .textAlign(TextAlign.Center)
+
+          Text(this.currentStep === 0 ? '主页 · 一言' : (this.currentStep === 1 ? '小组件 · 桌面卡片' : '字体 · 订阅源'))
+            .fontSize(13)
+            .fontColor($r('app.color.colorText4'))
+            .margin({ top: 14 })
+        }
+        .width('100%')
+        .height('100%')
+        .padding({ left: 22, right: 22, top: 18, bottom: 18 })
+        .justifyContent(FlexAlign.Center)
+        .alignItems(HorizontalAlign.Center)
+      }
+      .width('100%')
+      .height(190)
+      .backgroundColor($r('app.color.colorCard'))
+      .border({ width: 1, color: UiStyle.CARD_BORDER })
+      .borderRadius(UiStyle.CARD_RADIUS)
+      .shadow({ radius: 22, color: UiStyle.CARD_SHADOW, offsetX: 0, offsetY: 8 })
+      .margin({ top: 22 })
+    }
+    .width('100%')
+    .margin({ top: 24 })
+  }
+
+  @Builder
+  StepItem(index: number, title: Resource, desc: Resource) {
+    Row() {
+      Column() {
+        Text(`${index + 1}`)
+          .fontSize(14)
+          .fontWeight(FontWeight.Bold)
+          .fontColor(index === this.currentStep ? Color.White : $r('app.color.colorPrimary'))
+      }
+      .width(34)
+      .height(34)
+      .borderRadius(17)
+      .backgroundColor(index === this.currentStep ? $r('app.color.colorPrimary') : '#EEF3FF')
+      .justifyContent(FlexAlign.Center)
+      .alignItems(HorizontalAlign.Center)
+
+      Column() {
+        Text(title)
+          .fontSize(16)
+          .fontWeight(FontWeight.Bold)
+          .fontColor($r('app.color.colorText1'))
+          .width('100%')
+
+        Text(desc)
+          .fontSize(13)
+          .fontColor($r('app.color.colorText3'))
+          .lineHeight(21)
+          .width('100%')
+          .margin({ top: 5 })
+      }
+      .layoutWeight(1)
+      .alignItems(HorizontalAlign.Start)
+      .margin({ left: 14 })
+    }
+    .width('100%')
+    .padding({ left: 12, right: 12, top: 14, bottom: 14 })
+    .borderRadius(20)
+    .backgroundColor(index === this.currentStep ? '#F5F8FF' : '#00FFFFFF')
+    .onClick(() => {
+      this.currentStep = index;
+    })
+  }
+
+  @Builder
+  ProgressDots() {
+    Row({ space: 8 }) {
+      ForEach([0, 1, 2], (index: number) => {
+        Column()
+          .width(index === this.currentStep ? 22 : 8)
+          .height(8)
+          .borderRadius(4)
+          .backgroundColor(index === this.currentStep ? $r('app.color.colorPrimary') : '#D8E1F3')
+          .animation({ duration: 180, curve: Curve.EaseOut })
+      }, (index: number) => index.toString())
+    }
+    .width('100%')
+    .justifyContent(FlexAlign.Center)
+    .margin({ top: 22 })
+  }
+
+  @Builder
+  BottomActions() {
+    Column() {
+      Row() {
+        Button($r('app.string.welcome_skip'))
+          .type(ButtonType.Capsule)
+          .fontSize(15)
+          .fontWeight(FontWeight.Medium)
+          .fontColor($r('app.color.colorPrimary'))
+          .backgroundColor($r('app.color.colorCard'))
+          .border({ width: 1, color: '#C9D6FF' })
+          .height(48)
+          .layoutWeight(1)
+          .margin({ right: 8 })
+          .onClick(async () => {
+            await this.finishWelcome();
+          })
+
+        Button(this.currentStep < 2 ? $r('app.string.welcome_next') : $r('app.string.welcome_start'))
+          .type(ButtonType.Capsule)
+          .fontSize(15)
+          .fontWeight(FontWeight.Medium)
+          .fontColor(Color.White)
+          .backgroundColor($r('app.color.colorPrimary'))
+          .height(48)
+          .layoutWeight(1)
+          .margin({ left: 8 })
+          .onClick(async () => {
+            if (this.currentStep < 2) {
+              this.currentStep++;
+            } else {
+              await this.finishWelcome();
+            }
+          })
+      }
+      .width('100%')
+
+      Text($r('app.string.welcome_hint'))
+        .fontSize(12)
+        .fontColor($r('app.color.colorText4'))
+        .width('100%')
+        .textAlign(TextAlign.Center)
+        .margin({ top: 12 })
+    }
+    .width('100%')
+    .height(UiStyle.BOTTOM_ACTION_HEIGHT)
+    .padding({ left: UiStyle.PAGE_SIDE, right: UiStyle.PAGE_SIDE, top: 12, bottom: 18 })
+    .backgroundColor(UiStyle.PAGE_BG)
+    }
 }

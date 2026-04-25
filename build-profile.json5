@@ -5,13 +5,13 @@
         "name": "default",
         "type": "HarmonyOS",
         "material": {
-          "certpath": "C:\\Users\\zhz\\.ohos\\config\\default_harmony_IZHxzKQLwIS7FoULtZZ3BBPa6S_O-imAfnA8PA1Pvw0=.cer",
+          "certpath": "C:\\Users\\zhz\\.ohos\\config\\default_OneText_For_Harmonry_RTz-KNbP-fxYu_3eB_oO_0vzfsrvxUPcJiYCPZROPL8=.cer",
           "keyAlias": "debugKey",
-          "keyPassword": "0000001B83C2D18ED7E4367790957C0A1CFDDE54120B3031F38762EC6EF0A475C82E11CCF2133CE2679B70",
-          "profile": "C:\\Users\\zhz\\.ohos\\config\\default_harmony_IZHxzKQLwIS7FoULtZZ3BBPa6S_O-imAfnA8PA1Pvw0=.p7b",
+          "keyPassword": "0000001BD91A16F1D383E65A4467F91686FCA613056B526FEA1EA02281EF915104B4A3B6E786AD9D4EBFC9",
+          "profile": "C:\\Users\\zhz\\.ohos\\config\\default_OneText_For_Harmonry_RTz-KNbP-fxYu_3eB_oO_0vzfsrvxUPcJiYCPZROPL8=.p7b",
           "signAlg": "SHA256withECDSA",
-          "storeFile": "C:\\Users\\zhz\\.ohos\\config\\default_harmony_IZHxzKQLwIS7FoULtZZ3BBPa6S_O-imAfnA8PA1Pvw0=.p12",
-          "storePassword": "0000001BF7241C215480ECAB941556E70D790D113FED330561CB617B1F4F088648ECFB4F430F9AC9E45E08"
+          "storeFile": "C:\\Users\\zhz\\.ohos\\config\\default_OneText_For_Harmonry_RTz-KNbP-fxYu_3eB_oO_0vzfsrvxUPcJiYCPZROPL8=.p12",
+          "storePassword": "0000001B0576EF81B955BB191FFC0275C95CC28E39B4809B70E18AC7FA502FDC0693B6FF374493A7DC7A4C"
         }
       }
     ],
@@ -30,6 +30,17 @@
       },
       {
         "name": "release"
+      }
+    ],
+    "capabilities": [
+      {
+        "bundleName": "cn.lvcdy.onetext",
+        "config": [
+          {
+            "name": "Safety Detect",
+            "capability": "com.huawei.service.device_security.safety_detect"
+          }
+        ]
       }
     ]
   },

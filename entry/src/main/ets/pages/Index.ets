@@ -1,10 +1,14 @@
 import { common } from '@kit.AbilityKit';
 import { fileIo } from '@kit.CoreFileKit';
 import { pasteboard } from '@kit.BasicServicesKit';
-import { promptAction } from '@kit.ArkUI';
+import { font, promptAction } from '@kit.ArkUI';
+import { util } from '@kit.ArkTS';
+import { authentication } from '@kit.AccountKit';
+import { BlurStrategy, HdsTabs, hdsMaterial } from '@kit.UIDesignKit';
 import { image } from '@kit.ImageKit';
 import { CoreUtil } from '../common/CoreUtil';
 import { PreferencesUtil } from '../common/PreferencesUtil';
+import { UiStyle } from '../common/UiStyle';
 import { OneTextItem, FeedConfig } from '../model/DataModels';
 import { componentSnapshot } from '@kit.ArkUI';
 import { photoAccessHelper } from '@kit.MediaLibraryKit';
@@ -13,6 +17,11 @@ import { SettingsPageContent } from './SettingsPage';
 import { AboutPageContent } from './AboutPage';
 import { EditFeedPageContent } from './EditFeedPage';
 import { WelcomePageContent } from './WelcomePage';
+
+interface HuaweiAccountProfile {
+  name: string;
+  avatar: string;
+}
 
 /**
  * 主页面 - 替代 Android MainActivity
@@ -41,11 +50,22 @@ struct Index {
   @State isLeftHandHeld: boolean = false;
   @State isRefreshing: boolean = false;
   @State hasShownWelcome: boolean = false;
+  @State selectedTabIndex: number = 0;
+  @State fontStyleIndex: number = 0;
+  @State huaweiAccountName: string = '使用华为账号登录';
+  @State huaweiAccountHint: string = '点击获取 ID Token';
+  @State huaweiAccountAvatar: string = '';
+  @State hasHuaweiAccount: boolean = false;
   @Provide('navPathStack') navPathStack: NavPathStack = new NavPathStack();
 
   private context: common.UIAbilityContext = getContext(this) as common.UIAbilityContext;
   private coreUtil: CoreUtil = new CoreUtil(this.context);
   private prefs: PreferencesUtil = PreferencesUtil.getInstance();
+  private fontStyles: string[] = ['默认', '仓耳今楷', '霞鹜文楷'];
+  private fontFamilies: string[] = ['HarmonyOS Sans', 'CangErJinKai', 'LXGWWenKai'];
+  private fontSamples: string[] = ['樱', '楷', '文'];
+  private fontDescriptions: string[] = ['恢复系统字体', '仓耳今楷 01-W04', '霞鹜文楷 Regular'];
+  private isPullRefreshRunning: boolean = false;
   private holdingHandCallback = (status: motion.HoldingHandStatus): void => {
     if (status === motion.HoldingHandStatus.LEFT_HAND_HELD) {
       this.updateGripSide(true);
@@ -55,12 +75,16 @@ struct Index {
   };
 
   async aboutToAppear(): Promise<void> {
+    this.registerCustomFonts();
+
     // 加载偏好设置
     this.textFontSize = await this.prefs.getNumber('onetext_text_size', 23);
     this.byFontSize = await this.prefs.getNumber('onetext_by_size', 18);
     this.timeFontSize = await this.prefs.getNumber('onetext_time_size', 15);
     this.fromFontSize = await this.prefs.getNumber('onetext_from_size', 15);
+    this.fontStyleIndex = Math.min(await this.prefs.getNumber('onetext_font_style', 0), this.fontStyles.length - 1);
     this.sealVisible = await this.prefs.getBoolean('seal_enabled', false);
+    await this.loadHuaweiAccount();
 
     // 初始化订阅源
     await this.coreUtil.initFeedFile();
@@ -105,12 +129,145 @@ struct Index {
   }
 
   private async refreshByPull(): Promise<void> {
-    if (this.isRefreshing) {
+    if (this.isPullRefreshRunning) {
       return;
     }
+    this.isPullRefreshRunning = true;
     this.isRefreshing = true;
-    await this.loadOneText(true);
-    this.isRefreshing = false;
+    try {
+      await this.loadOneText(true);
+    } finally {
+      this.isRefreshing = false;
+      this.isPullRefreshRunning = false;
+    }
+  }
+
+  private getCurrentFontFamily(): string {
+    return this.fontFamilies[this.fontStyleIndex] ?? 'HarmonyOS Sans';
+  }
+
+  private registerCustomFonts(): void {
+    try {
+      font.registerFont({
+        familyName: 'CangErJinKai',
+        familySrc: $rawfile('fonts/canger_jinkai.ttf')
+      });
+      font.registerFont({
+        familyName: 'LXGWWenKai',
+        familySrc: $rawfile('fonts/lxgw_wenkai.ttf')
+      });
+    } catch (e) {
+      console.warn('Index', `Register custom fonts skipped: ${JSON.stringify(e)}`);
+    }
+  }
+
+  private async loadHuaweiAccount(): Promise<void> {
+    const idToken = await this.prefs.getString('huawei_id_token', '');
+    const isLoggedIn = await this.prefs.getBoolean('huawei_account_logged_in', false);
+    if (idToken.length === 0 && !isLoggedIn) {
+      this.huaweiAccountName = '华为账号用户';
+      this.huaweiAccountAvatar = '';
+      this.huaweiAccountHint = '';
+      this.hasHuaweiAccount = false;
+      return;
+    }
+    const profile = this.parseHuaweiIdToken(idToken);
+    const savedName = await this.prefs.getString('huawei_account_name', '');
+    const savedAvatar = await this.prefs.getString('huawei_account_avatar', '');
+    this.huaweiAccountName = savedName.length > 0 ? savedName : (profile.name.length > 0 ? profile.name : '华为账号用户');
+    this.huaweiAccountAvatar = savedAvatar.length > 0 ? savedAvatar : profile.avatar;
+    this.huaweiAccountHint = idToken.length > 0 ? '已获取 ID Token' : '';
+    this.hasHuaweiAccount = true;
+  }
+
+  private async loginWithHuaweiAccount(): Promise<void> {
+    try {
+      const provider = new authentication.HuaweiIDProvider();
+      const request = provider.createAuthorizationWithHuaweiIDRequest();
+      request.scopes = ['profile'];
+      request.forceAuthorization = true;
+      request.state = 'onetext_login';
+      request.nonce = 'onetext_login_nonce';
+      request.supportAtomicService = true;
+      const controller = new authentication.AuthenticationController(this.context);
+      const response = await controller.executeRequest(request) as authentication.AuthorizationWithHuaweiIDResponse;
+      const idToken = response.data?.idToken ?? '';
+      const tokenProfile = this.parseHuaweiIdToken(idToken);
+      const profile: HuaweiAccountProfile = {
+        name: response.data?.nickName ?? tokenProfile.name,
+        avatar: response.data?.avatarUri ?? tokenProfile.avatar
+      };
+      await this.saveHuaweiAccount(idToken, profile.name, profile.avatar);
+    } catch (e) {
+      console.error('Index', `Huawei account login failed: ${JSON.stringify(e)}`);
+      promptAction.showToast({ message: '华为账号登录失败' });
+    }
+  }
+
+  private async saveHuaweiAccount(idToken: string, name: string, avatar: string): Promise<boolean> {
+    if (idToken.length === 0 && name.length === 0 && avatar.length === 0) {
+      promptAction.showToast({ message: '未获取到华为账号信息' });
+      return false;
+    }
+    this.huaweiAccountName = name.length > 0 ? name : '华为账号用户';
+    this.huaweiAccountAvatar = avatar;
+    this.huaweiAccountHint = idToken.length > 0 ? '已获取 ID Token' : '';
+    this.hasHuaweiAccount = true;
+    await this.prefs.putString('huawei_id_token', idToken);
+    await this.prefs.putString('huawei_account_name', this.huaweiAccountName);
+    await this.prefs.putString('huawei_account_avatar', this.huaweiAccountAvatar);
+    await this.prefs.putBoolean('huawei_account_logged_in', true);
+    promptAction.showToast({ message: '华为账号登录成功' });
+    return true;
+  }
+
+  private async logoutHuaweiAccount(): Promise<void> {
+    await this.cancelHuaweiAuthorization();
+    await this.prefs.remove('huawei_id_token');
+    await this.prefs.remove('huawei_account_name');
+    await this.prefs.remove('huawei_account_avatar');
+    await this.prefs.remove('huawei_account_logged_in');
+    this.huaweiAccountName = '华为账号用户';
+    this.huaweiAccountAvatar = '';
+    this.huaweiAccountHint = '';
+    this.hasHuaweiAccount = false;
+    promptAction.showToast({ message: '已退出华为账号' });
+  }
+
+  private async cancelHuaweiAuthorization(): Promise<void> {
+    try {
+      const provider = new authentication.HuaweiIDProvider();
+      const request = provider.createCancelAuthorizationRequest();
+      request.state = 'onetext_logout';
+      const controller = new authentication.AuthenticationController(this.context);
+      await controller.executeRequest(request);
+    } catch (e) {
+      console.warn('Index', `Cancel Huawei authorization skipped: ${JSON.stringify(e)}`);
+    }
+  }
+
+  private parseHuaweiIdToken(idToken: string): HuaweiAccountProfile {
+    const profile: HuaweiAccountProfile = { name: '', avatar: '' };
+    const parts = idToken.split('.');
+    if (parts.length < 2) {
+      return profile;
+    }
+    try {
+      let payload = parts[1];
+      while (payload.length % 4 !== 0) {
+        payload += '=';
+      }
+      const base64Helper = new util.Base64Helper();
+      const payloadBytes = base64Helper.decodeSync(payload, util.Type.BASIC_URL_SAFE);
+      const decoder = new util.TextDecoder('utf-8');
+      const payloadJson = decoder.decodeToString(payloadBytes);
+      const payloadObj = JSON.parse(payloadJson) as Record<string, string>;
+      profile.name = payloadObj.name ?? payloadObj.nickname ?? payloadObj.display_name ?? '';
+      profile.avatar = payloadObj.picture ?? payloadObj.avatar ?? '';
+    } catch (e) {
+      console.warn('Index', `Parse Huawei ID Token skipped: ${JSON.stringify(e)}`);
+    }
+    return profile;
   }
 
   /**
@@ -148,6 +305,7 @@ struct Index {
           promptAction.showToast({ message: $r('app.string.init_failed') });
         }
       }
+      await this.coreUtil.saveCurrentOneText(this.oneText);
     } catch (e) {
       console.error('Index', `loadOneText error: ${JSON.stringify(e)}`);
       promptAction.showToast({ message: $r('app.string.refresh_failed') });
@@ -188,58 +346,90 @@ struct Index {
 
   build() {
     Navigation(this.navPathStack) {
-      Column() {
-        // 顶部标题栏
-        Row() {
-          Column() {
-            Text('OneText')
-              .fontSize(34)
-              .fontWeight(FontWeight.Bold)
-              .fontColor($r('app.color.colorText1'))
-
-            Text('把一句话留在今天')
-              .fontSize(13)
-              .fontColor($r('app.color.colorText4'))
-              .margin({ top: 2 })
-          }
-          .alignItems(HorizontalAlign.Start)
-
-          Blank()
-
-          Image($r('app.media.ic_heart'))
-            .width(28)
-            .height(28)
-            .margin({ right: 18 })
-
-          Image($r('app.media.ic_settings'))
-            .width(28)
-            .height(28)
-            .onClick(() => {
-              this.navPathStack.pushPathByName('SettingsPage', null);
-            })
+      HdsTabs({ barPosition: BarPosition.End, index: this.selectedTabIndex }) {
+        TabContent() {
+          this.HomePage()
         }
-        .width('100%')
-        .height(112)
-        .alignItems(VerticalAlign.Center)
-        .padding({ left: 24, right: 24, top: 36 })
+        .tabBar(this.OfficialBottomTabStyle($r('app.media.ic_home'), $r('app.string.tab_home')))
+
+        TabContent() {
+          this.MinePage()
+        }
+        .tabBar(this.OfficialBottomTabStyle($r('app.media.ic_user'), $r('app.string.tab_mine')))
+      }
+      .width('100%')
+      .height('100%')
+      .backgroundColor(UiStyle.PAGE_BG)
+      .barMode(BarMode.Fixed)
+      .barHeight(56)
+      .barOverlap(true)
+      .barBackgroundColor('#70FFFFFF')
+      .barBackgroundBlurStyle(BlurStyle.COMPONENT_REGULAR)
+      .blurStrategy(BlurStrategy.ADAPTIVE)
+      .barFloatingStyle({
+        barWidth: {
+          smallWidth: 250,
+          mediumWidth: 286,
+          largeWidth: 320
+        },
+        barSideMargin: 32,
+        barBottomMargin: 30,
+        gradientMask: {
+          maskColor: UiStyle.TRANSPARENT,
+          maskHeight: 112
+        },
+        adaptToHandedness: false,
+        lightColor: '#FFFFFFFF',
+        systemMaterialEffect: {
+          materialType: hdsMaterial.MaterialType.IMMERSIVE,
+          materialLevel: hdsMaterial.MaterialLevel.GENTLE
+        },
+        thermoCtrl: true,
+        barOpacity: 0.9
+      })
+      .scrollable(false)
+      .animationDuration(180)
+      .onChange((index: number) => {
+        this.selectedTabIndex = index;
+      })
+    }
+    .hideTitleBar(true)
+    .navDestination(this.PageMap)
+    .mode(NavigationMode.Stack)
+  }
+
+  private OfficialBottomTabStyle(icon: ResourceStr, label: ResourceStr): BottomTabBarStyle {
+    return BottomTabBarStyle
+      .of(icon, label)
+      .labelStyle({
+        font: { size: 11, weight: FontWeight.Medium },
+        selectedColor: $r('app.color.colorPrimary'),
+        unselectedColor: '#4F5A60'
+      })
+      .iconStyle({
+        selectedColor: $r('app.color.colorPrimary'),
+        unselectedColor: '#4F5A60'
+      })
+      .padding({ left: 4, right: 4, top: 4, bottom: 4 })
+      .layoutMode(LayoutMode.VERTICAL)
+      .verticalAlign(VerticalAlign.Center)
+      .symmetricExtensible(true);
+  }
+
+  @Builder
+  HomePage() {
+    Column() {
+      this.HomeHeader()
 
       // 主内容区域 - 可滚动
       Refresh({ refreshing: $$this.isRefreshing, offset: 72 }) {
         Scroll() {
           Column() {
-          // 一言卡片
-          Column() {
-            // 加载指示器
-            if (this.isLoading) {
-              LoadingProgress()
-                .width(40)
-                .height(40)
-                .color($r('app.color.colorPrimary'))
-            }
-
-            Stack() {
-              Column() {
-              }
+            // 一言卡片
+            Column() {
+              Stack() {
+                Column() {
+                }
                 .width(190)
                 .height(190)
                 .backgroundColor('#EEF3FF')
@@ -248,8 +438,8 @@ struct Index {
                 .position({ x: -54, y: -62 })
                 .zIndex(0)
 
-              Column() {
-              }
+                Column() {
+                }
                 .width(120)
                 .height(120)
                 .backgroundColor('#F7FAFF')
@@ -258,98 +448,103 @@ struct Index {
                 .position({ x: 248, y: 202 })
                 .zIndex(0)
 
-              if (this.sealVisible) {
-                Image($r('app.media.moemiku'))
-                  .width(158)
-                  .height(158)
-                  .opacity(0.42)
-                  .position({ x: 198, y: 112 })
-                  .zIndex(1)
-              }
-
-              if (this.oneText.text !== '') {
-                Column() {
-                  Text(this.oneText.text.replace(CoreUtil.TEXT_REPLACE_HOLDER, CoreUtil.TEXT_REPLACE))
-                    .fontSize(this.textFontSize)
-                    .fontWeight(FontWeight.Medium)
-                    .fontColor($r('app.color.colorText1'))
-                    .width('100%')
-                    .textAlign(TextAlign.Center)
-                    .lineHeight(this.textFontSize * 1.55)
-                    .maxLines(4)
-                    .textOverflow({ overflow: TextOverflow.Ellipsis })
-                    .onClick(() => {
-                      this.copyToClipboard(this.oneText.text);
-                    })
-
-                  if (this.oneText.by !== '') {
-                    Text(`-- ${this.oneText.by}`)
-                      .fontSize(this.byFontSize)
-                      .fontColor($r('app.color.colorText3'))
-                      .textAlign(TextAlign.Center)
-                      .margin({ top: 18 })
-                      .onClick(() => {
-                        this.copyToClipboard(this.oneText.by);
-                      })
-                  }
-
-                  if (this.oneText.from !== '' || this.oneText.time !== '') {
-                    Text(this.oneText.from !== '' ? this.oneText.from : this.oneText.time)
-                      .fontSize(this.fromFontSize)
-                      .fontColor($r('app.color.colorText4'))
-                      .textAlign(TextAlign.Center)
-                      .margin({ top: 18 })
-                      .onClick(() => {
-                        this.copyToClipboard(this.oneText.from !== '' ? this.oneText.from : this.oneText.time);
-                      })
-                  }
+                if (this.sealVisible) {
+                  Image($r('app.media.moemiku'))
+                    .width(158)
+                    .height(158)
+                    .opacity(0.42)
+                    .position({ x: 198, y: 112 })
+                    .zIndex(1)
                 }
-                .width('100%')
-                .height('100%')
-                .justifyContent(FlexAlign.Center)
-                .alignItems(HorizontalAlign.Center)
-                .padding({ left: 24, right: 24, top: 24, bottom: 24 })
-                .zIndex(2)
+
+                if (this.oneText.text !== '') {
+                  Column() {
+                    Text(this.oneText.text.replace(CoreUtil.TEXT_REPLACE_HOLDER, CoreUtil.TEXT_REPLACE))
+                      .fontSize(this.textFontSize)
+                      .fontFamily(this.getCurrentFontFamily())
+                      .fontWeight(FontWeight.Medium)
+                      .fontColor($r('app.color.colorText1'))
+                      .width('100%')
+                      .textAlign(TextAlign.Center)
+                      .lineHeight(this.textFontSize * 1.55)
+                      .maxLines(4)
+                      .textOverflow({ overflow: TextOverflow.Ellipsis })
+                      .onClick(() => {
+                        this.copyToClipboard(this.oneText.text);
+                      })
+
+                    if (this.oneText.by !== '') {
+                      Text(`-- ${this.oneText.by}`)
+                        .fontSize(this.byFontSize)
+                        .fontFamily(this.getCurrentFontFamily())
+                        .fontColor($r('app.color.colorText3'))
+                        .textAlign(TextAlign.Center)
+                        .margin({ top: 18 })
+                        .onClick(() => {
+                          this.copyToClipboard(this.oneText.by);
+                        })
+                    }
+
+                    if (this.oneText.from !== '' || this.oneText.time !== '') {
+                      Text(this.oneText.from !== '' ? this.oneText.from : this.oneText.time)
+                        .fontSize(this.fromFontSize)
+                        .fontFamily(this.getCurrentFontFamily())
+                        .fontColor($r('app.color.colorText4'))
+                        .textAlign(TextAlign.Center)
+                        .margin({ top: 18 })
+                        .onClick(() => {
+                          this.copyToClipboard(this.oneText.from !== '' ? this.oneText.from : this.oneText.time);
+                        })
+                    }
+                  }
+                  .width('100%')
+                  .height('100%')
+                  .justifyContent(FlexAlign.Center)
+                  .alignItems(HorizontalAlign.Center)
+                  .padding({ left: 24, right: 24, top: 24, bottom: 24 })
+                  .zIndex(2)
+                }
               }
+              .id('onetext_card')
+              .width('100%')
+              .height(306)
+              .backgroundColor($r('app.color.colorCard'))
+              .border({ width: 1, color: UiStyle.CARD_BORDER })
+              .borderRadius(UiStyle.CARD_RADIUS)
+              .shadow({ radius: 24, color: UiStyle.CARD_SHADOW, offsetX: 0, offsetY: 8 })
             }
-            .id('onetext_card')
             .width('100%')
-            .height(286)
+            .padding({ top: 0 })
+
+            Column() {
+              this.ActionRow($r('app.string.save_text'), $r('app.string.save_button'), () => {
+                this.saveScreenshot();
+              })
+
+              this.ActionRow($r('app.string.refresh_onetext_text'), $r('app.string.refresh_button'), () => {
+                this.refreshByPull();
+              })
+
+              this.ActionRow($r('app.string.seal_text'), this.sealVisible ? $r('app.string.seal_button_ison') : $r('app.string.seal_button_isoff'), async () => {
+                this.sealVisible = !this.sealVisible;
+                await this.prefs.putBoolean('seal_enabled', this.sealVisible);
+                promptAction.showToast({ message: this.sealVisible ? $r('app.string.seal_button_ison') : $r('app.string.seal_button_isoff') });
+              })
+
+              this.TextSizeSlider()
+              this.BySizeSlider()
+              this.TimeSizeSlider()
+            }
+            .width('100%')
+            .padding({ left: 18, right: 18, top: 20, bottom: 18 })
+            .margin({ top: 14 })
             .backgroundColor($r('app.color.colorCard'))
-            .borderRadius(28)
-            .shadow({ radius: 24, color: '#14000000', offsetX: 0, offsetY: 10 })
+            .border({ width: 1, color: UiStyle.CARD_BORDER })
+            .borderRadius(26)
+            .shadow({ radius: 18, color: UiStyle.CARD_SHADOW, offsetX: 0, offsetY: 6 })
           }
           .width('100%')
-          .padding({ top: 0 })
-
-          Column() {
-            this.ActionRow($r('app.string.save_text'), $r('app.string.save_button'), () => {
-              this.saveScreenshot();
-            })
-
-            this.ActionRow($r('app.string.refresh_onetext_text'), $r('app.string.refresh_button'), () => {
-              this.loadOneText(true);
-            })
-
-            this.ActionRow($r('app.string.seal_text'), this.sealVisible ? $r('app.string.seal_button_ison') : $r('app.string.seal_button_isoff'), async () => {
-              this.sealVisible = !this.sealVisible;
-              await this.prefs.putBoolean('seal_enabled', this.sealVisible);
-              promptAction.showToast({ message: this.sealVisible ? $r('app.string.seal_button_ison') : $r('app.string.seal_button_isoff') });
-            })
-
-            this.TextSizeSlider()
-            this.BySizeSlider()
-            this.TimeSizeSlider()
-          }
-          .width('100%')
-          .padding({ left: 20, right: 20, top: 26, bottom: 24 })
-          .margin({ top: 18 })
-          .backgroundColor($r('app.color.colorCard'))
-          .borderRadius(24)
-          .shadow({ radius: 18, color: '#10000000', offsetX: 0, offsetY: 8 })
-          }
-          .width('100%')
-          .padding({ left: 12, right: 12, bottom: 46, top: 8 })
+          .padding({ left: UiStyle.PAGE_SIDE, right: UiStyle.PAGE_SIDE, bottom: UiStyle.FLOAT_TAB_BOTTOM_SPACE, top: 0 })
         }
         .width('100%')
         .scrollBar(BarState.Off)
@@ -359,17 +554,292 @@ struct Index {
       .layoutWeight(1)
       .pullDownRatio(0.72)
       .refreshOffset(72)
-      .onRefreshing(() => {
-        this.refreshByPull();
+      .onRefreshing(async () => {
+        await this.refreshByPull();
       })
+    }
+    .height('100%')
+    .backgroundColor(UiStyle.PAGE_BG)
+  }
+
+  @Builder
+  HomeHeader() {
+    Column() {
+      Row() {
+        Column() {
+          Text('OneText')
+            .fontSize(30)
+            .fontWeight(FontWeight.Bold)
+            .fontColor($r('app.color.colorText1'))
+
+          Text($r('app.string.home_subtitle'))
+            .fontSize(13)
+            .fontColor($r('app.color.colorText4'))
+            .margin({ top: 2 })
+        }
+        .alignItems(HorizontalAlign.Start)
+
+        Blank()
+
+        Image($r('app.media.ic_heart'))
+          .width(28)
+          .height(28)
+          .margin({ right: 18 })
+
+        Image($r('app.media.ic_settings'))
+          .width(28)
+          .height(28)
+          .onClick(() => {
+            this.navPathStack.pushPathByName('SettingsPage', null);
+          })
+      }
+      .width('100%')
+      .height(50)
+      .alignItems(VerticalAlign.Center)
+      .padding({ left: 24, right: 24 })
+    }
+    .width('100%')
+    .height(UiStyle.HEADER_HEIGHT)
+    .padding({ top: UiStyle.PAGE_TOP })
+  }
+
+  @Builder
+  MinePage() {
+    Column() {
+      Scroll() {
+        Column() {
+          this.MineAccountHeader()
+          this.MineFontCard()
+          this.MineSettingsCard()
+        }
+        .width('100%')
+        .padding({ left: UiStyle.PAGE_SIDE, right: UiStyle.PAGE_SIDE, top: UiStyle.PAGE_TOP, bottom: UiStyle.FLOAT_TAB_BOTTOM_SPACE })
+        .alignItems(HorizontalAlign.Center)
+      }
+      .width('100%')
+      .height('100%')
+      .scrollBar(BarState.Off)
+      .edgeEffect(EdgeEffect.Spring)
     }
     .width('100%')
     .height('100%')
-    .backgroundColor($r('app.color.colorBackground'))
+    .backgroundColor(UiStyle.PAGE_BG)
+  }
+
+  @Builder
+  MineAccountHeader() {
+    Column() {
+      if (this.hasHuaweiAccount) {
+        if (this.huaweiAccountAvatar.length > 0) {
+          Image(this.huaweiAccountAvatar)
+            .width(96)
+            .height(96)
+            .borderRadius(48)
+            .objectFit(ImageFit.Cover)
+            .backgroundColor('#EEF3FF')
+        } else {
+          Image($r('app.media.app_icon'))
+            .width(96)
+            .height(96)
+            .borderRadius(48)
+            .backgroundColor('#EEF3FF')
+            .padding(12)
+        }
+
+        Text(this.huaweiAccountName)
+          .fontSize(21)
+          .fontWeight(FontWeight.Bold)
+          .fontColor($r('app.color.colorText1'))
+          .margin({ top: 12 })
+      } else {
+        Image($r('app.media.ic_user'))
+          .width(90)
+          .height(90)
+          .opacity(0.78)
+
+        Text($r('app.string.huawei_login_title'))
+          .fontSize(24)
+          .fontWeight(FontWeight.Medium)
+          .fontColor($r('app.color.colorText1'))
+          .margin({ top: 14 })
+
+        Text($r('app.string.huawei_login_desc'))
+          .fontSize(14)
+          .fontColor($r('app.color.colorText4'))
+          .textAlign(TextAlign.Center)
+          .margin({ top: 8, bottom: 18 })
+
+        Button($r('app.string.huawei_login_button'))
+          .width(220)
+          .height(46)
+          .fontSize(16)
+          .fontWeight(FontWeight.Medium)
+          .fontColor(Color.White)
+          .backgroundColor($r('app.color.colorPrimary'))
+          .borderRadius(23)
+          .onClick(async () => {
+            await this.loginWithHuaweiAccount();
+          })
+      }
     }
-    .hideTitleBar(true)
-    .navDestination(this.PageMap)
-    .mode(NavigationMode.Stack)
+    .width('100%')
+    .padding({ left: 16, right: 16, bottom: 18 })
+    .alignItems(HorizontalAlign.Center)
+  }
+
+  @Builder
+  MineFontCard() {
+    Column() {
+      Text($r('app.string.font_style'))
+        .fontSize(22)
+        .fontWeight(FontWeight.Bold)
+        .fontColor($r('app.color.colorText1'))
+        .width('100%')
+        .textAlign(TextAlign.Center)
+        .margin({ bottom: 18 })
+
+      this.FontStyleOptions()
+    }
+    .width('100%')
+    .padding({ left: 18, right: 18, top: 24, bottom: 12 })
+    .backgroundColor($r('app.color.colorCard'))
+    .border({ width: 1, color: UiStyle.CARD_BORDER })
+    .borderRadius(UiStyle.CARD_RADIUS)
+    .shadow({ radius: 20, color: UiStyle.CARD_SHADOW, offsetX: 0, offsetY: 6 })
+  }
+
+  @Builder
+  MineSettingsCard() {
+    Column() {
+      this.MineSettingRow($r('app.string.setting_title'), $r('app.string.mine_settings_desc'), () => {
+        this.navPathStack.pushPathByName('SettingsPage', null);
+      })
+
+      if (this.hasHuaweiAccount) {
+        Divider()
+          .strokeWidth(1)
+          .color('#EEF2F7')
+          .margin({ top: 4, bottom: 4 })
+
+        this.MineLogoutRow()
+      }
+    }
+    .width('100%')
+    .padding({ left: 18, right: 18, top: 10, bottom: 8 })
+    .margin({ top: 14 })
+    .backgroundColor($r('app.color.colorCard'))
+    .border({ width: 1, color: UiStyle.CARD_BORDER })
+    .borderRadius(UiStyle.CARD_RADIUS)
+    .shadow({ radius: 18, color: UiStyle.CARD_SHADOW, offsetX: 0, offsetY: 6 })
+  }
+
+  @Builder
+  FontStyleOptions() {
+    Scroll() {
+      Row({ space: 14 }) {
+        ForEach(this.fontStyles, (name: string, index: number) => {
+          Row() {
+            Text(this.fontSamples[index])
+              .fontSize(58)
+              .fontFamily(this.fontFamilies[index])
+              .fontWeight(FontWeight.Medium)
+              .fontColor(this.fontStyleIndex === index ? $r('app.color.colorPrimary') : $r('app.color.colorText2'))
+              .width(74)
+              .textAlign(TextAlign.Center)
+
+            Column() {
+              Text(name)
+                .fontSize(17)
+                .fontWeight(this.fontStyleIndex === index ? FontWeight.Bold : FontWeight.Medium)
+                .fontColor($r('app.color.colorText1'))
+
+              Text(this.fontDescriptions[index])
+                .fontSize(12)
+                .fontColor($r('app.color.colorText4'))
+                .margin({ top: 6 })
+
+              if (this.fontStyleIndex === index) {
+                Text('当前使用')
+                  .fontSize(11)
+                  .fontColor($r('app.color.colorPrimary'))
+                  .margin({ top: 12 })
+              }
+            }
+            .alignItems(HorizontalAlign.Start)
+            .layoutWeight(1)
+          }
+          .width(226)
+          .height(112)
+          .padding({ left: 14, right: 14, top: 14, bottom: 14 })
+          .borderRadius(18)
+          .backgroundColor(this.fontStyleIndex === index ? '#F5F8FF' : '#FFFFFF')
+          .border({ width: 1, color: this.fontStyleIndex === index ? '#BFD0FF' : '#E7EAF0' })
+          .shadow({ radius: this.fontStyleIndex === index ? 12 : 0, color: '#122F6BFF', offsetX: 0, offsetY: 5 })
+          .onClick(async () => {
+            this.fontStyleIndex = index;
+            await this.prefs.putNumber('onetext_font_style', index);
+          })
+        }, (name: string, index: number) => `${index}-${name}`)
+      }
+      .padding({ left: 0, right: 20 })
+    }
+    .width('100%')
+    .height(120)
+    .scrollable(ScrollDirection.Horizontal)
+    .scrollBar(BarState.Off)
+  }
+
+  @Builder
+  MineSettingRow(title: ResourceStr, desc: ResourceStr, onClick: () => void) {
+    Row() {
+      Column() {
+        Text(title)
+          .fontSize(16)
+          .fontWeight(FontWeight.Medium)
+          .fontColor($r('app.color.colorText2'))
+
+        Text(desc)
+          .fontSize(12)
+          .fontColor($r('app.color.colorText4'))
+          .margin({ top: 4 })
+      }
+      .alignItems(HorizontalAlign.Start)
+      .layoutWeight(1)
+
+      Image($r('app.media.ic_arrow_right'))
+        .width(16)
+        .height(16)
+        .opacity(0.55)
+    }
+    .width('100%')
+    .height(62)
+    .onClick(() => {
+      onClick();
+    })
+  }
+
+  @Builder
+  MineLogoutRow() {
+    Row() {
+      Column() {
+        Text($r('app.string.logout_title'))
+          .fontSize(16)
+          .fontWeight(FontWeight.Medium)
+          .fontColor(UiStyle.DANGER)
+
+        Text($r('app.string.logout_desc'))
+          .fontSize(12)
+          .fontColor($r('app.color.colorText4'))
+          .margin({ top: 4 })
+      }
+      .alignItems(HorizontalAlign.Start)
+      .layoutWeight(1)
+    }
+    .width('100%')
+    .height(62)
+    .onClick(async () => {
+      await this.logoutHuaweiAccount();
+    })
   }
 
   @Builder

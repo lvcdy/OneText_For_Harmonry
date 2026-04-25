@@ -120,6 +120,23 @@ export class CoreUtil {
     };
   }
 
+  async saveCurrentOneText(oneText: OneTextItem): Promise<void> {
+    await this.prefs.putString('current_onetext', JSON.stringify(oneText));
+  }
+
+  async getCurrentOneText(): Promise<OneTextItem | null> {
+    const currentOneText = await this.prefs.getString('current_onetext', '');
+    if (currentOneText === '') {
+      return null;
+    }
+    try {
+      return JSON.parse(currentOneText) as OneTextItem;
+    } catch (e) {
+      console.error('CoreUtil', `getCurrentOneText error: ${JSON.stringify(e)}`);
+      return null;
+    }
+  }
+
   /**
    * 获取组合文本（支持 && 多字段拼接）
    */
@@ -221,7 +238,8 @@ export class CoreUtil {
    */
   async getOneTextFromApi(feedMap: FeedConfig): Promise<OneTextItem> {
     try {
-      const result = await HttpUtil.get(feedMap.api_url ?? '');
+      const result = await HttpUtil.get(feedMap.api_url ?? feedMap.feed_url ?? '');
+      await this.prefs.putString('api_string', result);
       const jsonObj = JSON.parse(result) as Record<string, string>;
       return this.convertOneText(jsonObj, feedMap);
     } catch (e) {
@@ -283,8 +301,9 @@ export class CoreUtil {
     const newFeed: FeedConfig = {
       feed_name: feedName,
       feed_type: feedType,
-      feed_url: feedURL ?? '',
+      feed_url: feedType === 'remote' ? (feedURL ?? '') : '',
       feed_path: feedPath ?? '',
+      api_url: feedType === 'internet' ? (feedURL ?? '') : '',
       text_key: 'text',
       by_key: 'by',
       from_key: 'from',
@@ -295,6 +314,36 @@ export class CoreUtil {
     const feedDir = `${this.context.filesDir}/Feed`;
     FileUtil.deleteFile(`${feedDir}/Feed.json`);
     FileUtil.writeTextToFile(JSON.stringify(feeds), feedDir, 'Feed.json');
+  }
+
+  async updateFeed(position: number, feedName: string, feedUrl: string): Promise<void> {
+    const feeds = this.getAllFeeds();
+    if (position < 0 || position >= feeds.length) {
+      return;
+    }
+    const feed = feeds[position];
+    feed.feed_name = feedName;
+    if (feed.feed_type === 'internet') {
+      feed.api_url = feedUrl;
+      feed.feed_url = '';
+    } else if (feed.feed_type === 'local') {
+      feed.feed_path = feedUrl;
+    } else {
+      feed.feed_url = feedUrl;
+    }
+    const feedDir = `${this.context.filesDir}/Feed`;
+    FileUtil.deleteFile(`${feedDir}/Feed.json`);
+    FileUtil.writeTextToFile(JSON.stringify(feeds), feedDir, 'Feed.json');
+    await this.clearOneTextCache();
+  }
+
+  async clearOneTextCache(): Promise<void> {
+    await this.prefs.remove('api_string');
+    await this.prefs.remove('current_onetext');
+    await this.prefs.remove('onetext_code');
+    await this.prefs.remove('onetext_latest_refresh_time');
+    await this.prefs.remove('feed_latest_refresh_time');
+    FileUtil.deleteFile(`${this.context.filesDir}/OneText/OneText-Library.json`);
   }
 
   /**
@@ -311,7 +360,7 @@ export class CoreUtil {
       }
       await this.prefs.remove('feed_code');
       await this.prefs.remove('feed_latest_refresh_time');
-      await this.prefs.remove('onetext_code');
+      await this.clearOneTextCache();
     }
     const feeds = this.getAllFeeds();
     feeds.splice(position, 1);
@@ -355,13 +404,14 @@ export class CoreUtil {
     try {
       const feedCode = await this.prefs.getNumber('feed_code', 0);
       const feedMap = await this.getFeedInformation(feedCode);
-      const oneText = feedMap.feed_type === 'internet'
+      const oneText = await this.getCurrentOneText() ?? (feedMap.feed_type === 'internet'
         ? await this.getOneTextFromApi(feedMap)
-        : (await this.initOneText() ? await this.getOneText(true, true) : null);
+        : (await this.initOneText() ? await this.getOneText(false, true) : null));
 
       if (!oneText) {
         return null;
       }
+      await this.saveCurrentOneText(oneText);
 
       const widgetDark = await this.prefs.getBoolean('widget_dark', false);
       const widgetShadow = await this.prefs.getBoolean('widget_shadow', true);
