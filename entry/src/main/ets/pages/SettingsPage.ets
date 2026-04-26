@@ -691,6 +691,7 @@ export struct SettingsPageContent {
         });
         await this.prefs.putNumber(AppDisplayModeUtil.PREF_KEY, index);
         AppDisplayModeUtil.apply(this.context, index);
+        await AppDisplayModeUtil.applySystemBars(this.context, index);
       })
   }
 

@@ -31,6 +31,7 @@ const HOME_CONTENT_MAX_WIDTH_COMPACT: number = 560;
 const HOME_CONTENT_MAX_WIDTH_WIDE: number = 980;
 const HOME_QUOTE_SPAN_WIDE: number = 58;
 const HOME_ACTION_SPAN_WIDE: number = 42;
+const HOME_CONTENT_TOP_SPACE: number = 16;
 const MINE_ACCOUNT_HEADER_HEIGHT: number = 198;
 const MINE_ACCOUNT_HEADER_OFFSET_Y: number = 0;
 const MINE_PAGE_SIDE: number = 0;
@@ -569,7 +570,12 @@ struct Index {
             }
             .width('100%')
             .constraintSize({ maxWidth: this.getHomeContentMaxWidth() })
-            .padding({ left: UiStyle.PAGE_SIDE, right: UiStyle.PAGE_SIDE, bottom: UiStyle.FLOAT_TAB_BOTTOM_SPACE, top: 0 })
+            .padding({
+              left: UiStyle.PAGE_SIDE,
+              right: UiStyle.PAGE_SIDE,
+              bottom: UiStyle.FLOAT_TAB_BOTTOM_SPACE,
+              top: HOME_CONTENT_TOP_SPACE
+            })
           }
           .width('100%')
           .alignItems(HorizontalAlign.Center)

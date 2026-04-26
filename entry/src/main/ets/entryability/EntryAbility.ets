@@ -29,18 +29,14 @@ export default class EntryAbility extends UIAbility {
     const prefs = PreferencesUtil.getInstance();
     await prefs.init(this.context);
     AppLanguageUtil.apply(this.context, await prefs.getNumber(AppLanguageUtil.PREF_KEY, 0));
-    AppDisplayModeUtil.apply(this.context, await prefs.getNumber(AppDisplayModeUtil.PREF_KEY, 0));
+    const displayModeIndex = await prefs.getNumber(AppDisplayModeUtil.PREF_KEY, 0);
+    AppDisplayModeUtil.apply(this.context, displayModeIndex);
 
     // 开启全屏沉浸式布局，让页面内容延伸到系统栏区域。
     const mainWindow = await windowStage.getMainWindow();
     await mainWindow.setWindowLayoutFullScreen(true);
-    const sysBarProps: window.SystemBarProperties = {
-      statusBarColor: '#00000000',
-      statusBarContentColor: '#000000',
-      navigationBarColor: '#00000000',
-      navigationBarContentColor: '#000000'
-    };
-    await mainWindow.setWindowSystemBarProperties(sysBarProps);
+    await mainWindow.setWindowSystemBarProperties(AppDisplayModeUtil.getSystemBarProperties(this.context,
+      displayModeIndex));
 
     // 加载主页面
     windowStage.loadContent('pages/Index', (err) => {
