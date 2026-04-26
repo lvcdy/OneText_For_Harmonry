@@ -2,7 +2,6 @@
     "forms": [
         {
             "name": "HitokotoWidget",
-            "displayName": "$string:widget_display_name",
             "description": "$string:widget_desc",
             "src": "./ets/widget/pages/WidgetCard.ets",
             "uiSyntax": "arkts",
@@ -13,6 +12,7 @@
             "colorMode": "auto",
             "isDynamic": true,
             "transparencyEnabled": true,
+            "enableBlurBackground": true,
             "isDefault": true,
             "updateEnabled": true,
             "scheduledUpdateTime": "10:30",

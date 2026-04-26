@@ -19,17 +19,34 @@ export struct EditFeedPageContent {
   @State showAddDialog: boolean = false;
   @State newFeedName: string = '';
   @State newFeedUrl: string = '';
-  @State newFeedType: number = 0; // 0: remote, 1: internet
+  @State newFeedType: number = 0; // 0: remote, 1: internet, 2: local
+  @State newShowAdvanced: boolean = false;
+  @State newApiMethodIndex: number = 0;
+  @State newTextKey: string = 'text';
+  @State newByKey: string = 'by';
+  @State newFromKey: string = 'from';
+  @State newTimeKey: string = 'time';
+  @State newUriKey: string = 'uri';
+  @State newObjectKey: string = '';
   @State showEditDialog: boolean = false;
   @State editFeedIndex: number = -1;
   @State editFeedName: string = '';
   @State editFeedUrl: string = '';
+  @State editShowAdvanced: boolean = false;
+  @State editApiMethodIndex: number = 0;
+  @State editTextKey: string = 'text';
+  @State editByKey: string = 'by';
+  @State editFromKey: string = 'from';
+  @State editTimeKey: string = 'time';
+  @State editUriKey: string = 'uri';
+  @State editObjectKey: string = '';
   @State pageWidth: number = 0;
   @Consume('navPathStack') navPathStack: NavPathStack;
 
   private context: common.UIAbilityContext = getContext(this) as common.UIAbilityContext;
   private coreUtil: CoreUtil = new CoreUtil(this.context);
-  private feedTypes: string[] = ['远程 JSON', 'API 接口'];
+  private feedTypes: string[] = ['远程 JSON', 'API 接口', '本地文件'];
+  private apiMethods: string[] = ['GET', 'POST'];
 
   private isWideLayout(): boolean {
     return this.pageWidth >= EDIT_FEED_RESPONSIVE_WIDE_WIDTH;
@@ -40,15 +57,15 @@ export struct EditFeedPageContent {
   }
 
   private getGlassCardColor(): ResourceColor {
-    return UiStyle.GLASS_CARD_BG;
+    return $r('app.color.colorGlassCard');
   }
 
   private getGlassCardBorder(): ResourceColor {
-    return UiStyle.GLASS_CARD_BORDER;
+    return $r('app.color.colorGlassBorder');
   }
 
   private getGlassShadowColor(): ResourceColor {
-    return UiStyle.GLASS_CARD_SHADOW;
+    return $r('app.color.colorGlassShadow');
   }
 
   async aboutToAppear(): Promise<void> {
@@ -93,8 +110,14 @@ export struct EditFeedPageContent {
       promptAction.showToast({ message: '请输入订阅源地址' });
       return;
     }
-    const feedType = this.newFeedType === 0 ? CoreUtil.FEED_TYPE_REMOTE : CoreUtil.FEED_TYPE_INTERNET;
-    await this.coreUtil.addFeed(this.newFeedName.trim(), feedType, this.newFeedUrl.trim());
+    const feedType = this.newFeedType === 1 ? CoreUtil.FEED_TYPE_INTERNET :
+      (this.newFeedType === 2 ? CoreUtil.FEED_TYPE_LOCAL : CoreUtil.FEED_TYPE_REMOTE);
+    await this.coreUtil.addFeed(this.newFeedName.trim(), feedType,
+      feedType === CoreUtil.FEED_TYPE_LOCAL ? '' : this.newFeedUrl.trim(),
+      feedType === CoreUtil.FEED_TYPE_LOCAL ? this.newFeedUrl.trim() : '',
+      this.normalizeKey(this.newTextKey, 'text'), this.normalizeKey(this.newByKey, 'by'),
+      this.normalizeKey(this.newFromKey, 'from'), this.normalizeKey(this.newTimeKey, 'time'),
+      this.normalizeKey(this.newUriKey, 'uri'), this.newObjectKey.trim(), this.apiMethods[this.newApiMethodIndex]);
     this.showAddDialog = false;
     this.resetAddFeedForm();
     this.loadFeeds();
@@ -106,16 +129,48 @@ export struct EditFeedPageContent {
       (feed.feed_url ?? feed.feed_path ?? '');
   }
 
+  private getApiMethodIndex(feed: FeedConfig): number {
+    return (feed.api_method ?? 'GET').toUpperCase() === 'POST' ? 1 : 0;
+  }
+
+  private getEditingFeedType(): string {
+    if (this.editFeedIndex < 0 || this.editFeedIndex >= this.feeds.length) {
+      return '';
+    }
+    return this.feeds[this.editFeedIndex].feed_type;
+  }
+
+  private normalizeKey(value: string, fallback: string): string {
+    const trimmed = value.trim();
+    return trimmed === '' ? fallback : trimmed;
+  }
+
   private resetAddFeedForm(): void {
     this.newFeedName = '';
     this.newFeedUrl = '';
     this.newFeedType = 0;
+    this.newShowAdvanced = false;
+    this.newApiMethodIndex = 0;
+    this.newTextKey = 'text';
+    this.newByKey = 'by';
+    this.newFromKey = 'from';
+    this.newTimeKey = 'time';
+    this.newUriKey = 'uri';
+    this.newObjectKey = '';
   }
 
   private resetEditFeedForm(): void {
     this.editFeedIndex = -1;
     this.editFeedName = '';
     this.editFeedUrl = '';
+    this.editShowAdvanced = false;
+    this.editApiMethodIndex = 0;
+    this.editTextKey = 'text';
+    this.editByKey = 'by';
+    this.editFromKey = 'from';
+    this.editTimeKey = 'time';
+    this.editUriKey = 'uri';
+    this.editObjectKey = '';
   }
 
   private showEditFeedDialog(index: number): void {
@@ -123,6 +178,14 @@ export struct EditFeedPageContent {
     this.editFeedIndex = index;
     this.editFeedName = feed.feed_name;
     this.editFeedUrl = this.getFeedUrl(feed);
+    this.editShowAdvanced = false;
+    this.editApiMethodIndex = this.getApiMethodIndex(feed);
+    this.editTextKey = feed.text_key ?? 'text';
+    this.editByKey = feed.by_key ?? 'by';
+    this.editFromKey = feed.from_key ?? 'from';
+    this.editTimeKey = feed.time_key ?? 'time';
+    this.editUriKey = feed.uri_key ?? 'uri';
+    this.editObjectKey = feed.object_key ?? '';
     this.showEditDialog = true;
   }
 
@@ -138,7 +201,10 @@ export struct EditFeedPageContent {
       promptAction.showToast({ message: '请输入订阅源地址' });
       return;
     }
-    await this.coreUtil.updateFeed(this.editFeedIndex, this.editFeedName.trim(), this.editFeedUrl.trim());
+    await this.coreUtil.updateFeed(this.editFeedIndex, this.editFeedName.trim(), this.editFeedUrl.trim(),
+      this.normalizeKey(this.editTextKey, 'text'), this.normalizeKey(this.editByKey, 'by'),
+      this.normalizeKey(this.editFromKey, 'from'), this.normalizeKey(this.editTimeKey, 'time'),
+      this.normalizeKey(this.editUriKey, 'uri'), this.editObjectKey.trim(), this.apiMethods[this.editApiMethodIndex]);
     this.showEditDialog = false;
     this.resetEditFeedForm();
     this.loadFeeds();
@@ -271,7 +337,8 @@ export struct EditFeedPageContent {
           this.newFeedName = value;
         })
 
-      TextInput({ placeholder: this.newFeedType === 0 ? 'JSON 文件 URL' : 'API 接口 URL', text: this.newFeedUrl })
+      TextInput({ placeholder: this.newFeedType === 0 ? 'JSON 文件 URL' :
+        (this.newFeedType === 1 ? 'API 接口 URL' : '本地 JSON 文件路径'), text: this.newFeedUrl })
         .width('100%')
         .height(44)
         .fontSize(14)
@@ -279,6 +346,28 @@ export struct EditFeedPageContent {
         .onChange((value: string) => {
           this.newFeedUrl = value;
         })
+
+      this.AdvancedToggle(this.newShowAdvanced, () => {
+        this.newShowAdvanced = !this.newShowAdvanced;
+      })
+
+      if (this.newShowAdvanced) {
+        this.AdvancedFeedFields(this.newFeedType === 1, this.newApiMethodIndex, (index: number) => {
+          this.newApiMethodIndex = index;
+        }, this.newTextKey, (value: string) => {
+          this.newTextKey = value;
+        }, this.newByKey, (value: string) => {
+          this.newByKey = value;
+        }, this.newFromKey, (value: string) => {
+          this.newFromKey = value;
+        }, this.newTimeKey, (value: string) => {
+          this.newTimeKey = value;
+        }, this.newUriKey, (value: string) => {
+          this.newUriKey = value;
+        }, this.newObjectKey, (value: string) => {
+          this.newObjectKey = value;
+        })
+      }
     }
     .width('100%')
   }
@@ -306,6 +395,29 @@ export struct EditFeedPageContent {
           .onChange((value: string) => {
             this.editFeedUrl = value;
           })
+
+        this.AdvancedToggle(this.editShowAdvanced, () => {
+          this.editShowAdvanced = !this.editShowAdvanced;
+        })
+
+        if (this.editShowAdvanced) {
+          this.AdvancedFeedFields(this.getEditingFeedType() === CoreUtil.FEED_TYPE_INTERNET, this.editApiMethodIndex,
+            (index: number) => {
+              this.editApiMethodIndex = index;
+            }, this.editTextKey, (value: string) => {
+              this.editTextKey = value;
+            }, this.editByKey, (value: string) => {
+              this.editByKey = value;
+            }, this.editFromKey, (value: string) => {
+              this.editFromKey = value;
+            }, this.editTimeKey, (value: string) => {
+              this.editTimeKey = value;
+            }, this.editUriKey, (value: string) => {
+              this.editUriKey = value;
+            }, this.editObjectKey, (value: string) => {
+              this.editObjectKey = value;
+            })
+        }
 
         this.DialogActions('取消', '保存', () => {
           this.showEditDialog = false;
@@ -337,6 +449,84 @@ export struct EditFeedPageContent {
       .fontColor($r('app.color.colorText1'))
       .width('100%')
       .margin({ bottom: 16 })
+  }
+
+  @Builder
+  AdvancedToggle(expanded: boolean, onClick: () => void) {
+    Row() {
+      Text('高级配置')
+        .fontSize(13)
+        .fontColor($r('app.color.colorPrimary'))
+
+      Blank()
+
+      Image($r('app.media.ic_expand'))
+        .width(14)
+        .height(14)
+        .opacity(0.7)
+        .rotate({ angle: expanded ? 180 : 0 })
+    }
+    .width('100%')
+    .height(38)
+    .margin({ bottom: expanded ? 8 : 16 })
+    .onClick(() => {
+      onClick();
+    })
+  }
+
+  @Builder
+  AdvancedFeedFields(showMethod: boolean, methodIndex: number, onMethodChange: (index: number) => void,
+    textKey: string, onTextKeyChange: (value: string) => void, byKey: string, onByKeyChange: (value: string) => void,
+    fromKey: string, onFromKeyChange: (value: string) => void, timeKey: string,
+    onTimeKeyChange: (value: string) => void, uriKey: string, onUriKeyChange: (value: string) => void,
+    objectKey: string, onObjectKeyChange: (value: string) => void) {
+    Column() {
+      if (showMethod) {
+        Row() {
+          Text('方法')
+            .fontSize(14)
+            .fontColor($r('app.color.colorText2'))
+            .width(60)
+          Select(this.apiMethods.map((item: string) => ({ value: item } as SelectOption)))
+            .selected(methodIndex)
+            .value(this.apiMethods[methodIndex])
+            .font({ size: 14 })
+            .onSelect((index: number) => {
+              onMethodChange(index);
+            })
+        }
+        .width('100%')
+        .margin({ bottom: 12 })
+      }
+
+      this.KeyInput('正文字段', textKey, onTextKeyChange)
+      this.KeyInput('作者字段', byKey, onByKeyChange)
+      this.KeyInput('来源字段', fromKey, onFromKeyChange)
+      this.KeyInput('时间字段', timeKey, onTimeKeyChange)
+      this.KeyInput('链接字段', uriKey, onUriKeyChange)
+      this.KeyInput('对象路径', objectKey, onObjectKeyChange)
+    }
+    .width('100%')
+  }
+
+  @Builder
+  KeyInput(label: string, textValue: string, onChange: (value: string) => void) {
+    Row() {
+      Text(label)
+        .fontSize(13)
+        .fontColor($r('app.color.colorText2'))
+        .width(74)
+
+      TextInput({ placeholder: label, text: textValue })
+        .height(40)
+        .fontSize(13)
+        .layoutWeight(1)
+        .onChange((value: string) => {
+          onChange(value);
+        })
+    }
+    .width('100%')
+    .margin({ bottom: 10 })
   }
 
   @Builder

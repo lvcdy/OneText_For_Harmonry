@@ -27,15 +27,23 @@ export struct WelcomePageContent {
   }
 
   private getGlassCardColor(): ResourceColor {
-    return UiStyle.GLASS_CARD_BG;
+    return $r('app.color.colorGlassCard');
+  }
+
+  private getGlassCardBorder(): ResourceColor {
+    return $r('app.color.colorGlassBorder');
+  }
+
+  private getGlassShadowColor(): ResourceColor {
+    return $r('app.color.colorGlassShadow');
   }
 
   private getGlassControlColor(): ResourceColor {
-    return UiStyle.GLASS_CONTROL_BG;
+    return $r('app.color.colorGlassControl');
   }
 
   private getGlassSelectedColor(): ResourceColor {
-    return UiStyle.GLASS_SELECTED_BG;
+    return $r('app.color.colorGlassSelected');
   }
 
   private async finishWelcome(): Promise<void> {
@@ -91,9 +99,9 @@ export struct WelcomePageContent {
       .width('100%')
       .padding({ left: 14, right: 14, top: 14, bottom: 14 })
       .backgroundColor(this.getGlassCardColor())
-      .border({ width: 1, color: UiStyle.GLASS_CARD_BORDER })
+      .border({ width: 1, color: this.getGlassCardBorder() })
       .borderRadius(UiStyle.CARD_RADIUS)
-      .shadow({ radius: 18, color: UiStyle.GLASS_CARD_SHADOW, offsetX: 0, offsetY: 6 })
+      .shadow({ radius: 18, color: this.getGlassShadowColor(), offsetX: 0, offsetY: 6 })
       .margin({ top: UiStyle.CARD_GAP })
 
       this.ProgressDots()
@@ -190,9 +198,9 @@ export struct WelcomePageContent {
       .width('100%')
       .height(190)
       .backgroundColor(this.getGlassCardColor())
-      .border({ width: 1, color: UiStyle.GLASS_CARD_BORDER })
+      .border({ width: 1, color: this.getGlassCardBorder() })
       .borderRadius(UiStyle.CARD_RADIUS)
-      .shadow({ radius: 22, color: UiStyle.GLASS_CARD_SHADOW, offsetX: 0, offsetY: 8 })
+      .shadow({ radius: 22, color: this.getGlassShadowColor(), offsetX: 0, offsetY: 8 })
       .margin({ top: 22 })
     }
     .width('100%')
@@ -269,7 +277,7 @@ export struct WelcomePageContent {
           .fontWeight(FontWeight.Medium)
           .fontColor($r('app.color.colorPrimary'))
           .backgroundColor(this.getGlassControlColor())
-          .border({ width: 1, color: UiStyle.GLASS_CARD_BORDER })
+          .border({ width: 1, color: this.getGlassCardBorder() })
           .height(48)
           .layoutWeight(1)
           .margin({ right: 8 })

@@ -30,4 +30,8 @@ export class AppLanguageUtil {
       console.warn('AppLanguageUtil', `setAppPreferredLanguage failed: ${JSON.stringify(e)}`);
     }
   }
+
+  static convertText(text: string): string {
+    return text;
+  }
 }

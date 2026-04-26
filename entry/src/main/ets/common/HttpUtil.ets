@@ -10,10 +10,15 @@ export class HttpUtil {
    * @returns 响应字符串
    */
   static async get(url: string): Promise<string> {
+    return await HttpUtil.request(url, 'GET');
+  }
+
+  static async request(url: string, method: string = 'GET'): Promise<string> {
     const httpRequest = http.createHttp();
+    const requestMethod = method.toUpperCase() === 'POST' ? http.RequestMethod.POST : http.RequestMethod.GET;
     try {
       const response = await httpRequest.request(url, {
-        method: http.RequestMethod.GET,
+        method: requestMethod,
         connectTimeout: 15000,
         readTimeout: 15000,
         header: {

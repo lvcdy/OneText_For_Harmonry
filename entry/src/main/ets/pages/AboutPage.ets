@@ -26,11 +26,11 @@ export struct AboutPageContent {
   }
 
   private getGlassCardColor(): ResourceColor {
-    return UiStyle.GLASS_CARD_BG;
+    return $r('app.color.colorGlassCard');
   }
 
   private getGlassCardBorder(): ResourceColor {
-    return UiStyle.GLASS_CARD_BORDER;
+    return $r('app.color.colorGlassBorder');
   }
 
   private async openLink(url: string): Promise<void> {

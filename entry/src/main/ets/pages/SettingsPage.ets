@@ -5,7 +5,14 @@ import { motion } from '@kit.MultimodalAwarenessKit';
 import { PreferencesUtil } from '../common/PreferencesUtil';
 import { AppLanguageUtil } from '../common/AppLanguageUtil';
 import { AppDisplayModeUtil } from '../common/AppDisplayModeUtil';
-import { AppBackgroundLayer, AppBackgroundMode, AppBackgroundUtil } from '../common/AppBackgroundUtil';
+import { PermissionUtil } from '../common/PermissionUtil';
+import {
+  AppBackgroundLayer,
+  AppBackgroundMode,
+  AppBackgroundUtil,
+  WidgetBackgroundMode,
+  WidgetBackgroundUtil
+} from '../common/AppBackgroundUtil';
 import { CoreUtil } from '../common/CoreUtil';
 import { FormUtil } from '../common/FormUtil';
 import { GripUtil } from '../common/GripUtil';
@@ -17,6 +24,8 @@ const SETTINGS_CONTENT_MAX_WIDTH_COMPACT: number = 560;
 const SETTINGS_CONTENT_MAX_WIDTH_WIDE: number = 1040;
 const SETTINGS_CARD_WIDTH_COMPACT: string = '100%';
 const SETTINGS_CARD_WIDTH_WIDE: string = '50%';
+const WIDGET_BACKGROUND_TRANSPARENT_INDEX: number = 0;
+const WIDGET_BACKGROUND_BLUR_INDEX: number = 1;
 
 /**
  * 设置页面 - 替代 Android SettingActivity
@@ -39,6 +48,7 @@ export struct SettingsPageContent {
   @State pageWidth: number = 0;
   @State backgroundModeIndex: number = AppBackgroundMode.DEFAULT;
   @State backgroundApiText: string = '';
+  @State widgetBackgroundModeIndex: number = WIDGET_BACKGROUND_TRANSPARENT_INDEX;
   @Consume('navPathStack') navPathStack: NavPathStack;
   @StorageLink('appBackgroundUri') appBackgroundUri: string = '';
 
@@ -48,6 +58,7 @@ export struct SettingsPageContent {
   private displayModes: string[] = ['跟随系统', '浅色模式', '深色模式'];
   private languageTypes: string[] = ['中文', '繁中', 'English'];
   private backgroundModes: string[] = ['默认纯色', '本地图片', 'API'];
+  private widgetBackgroundModes: string[] = ['透明背板', '模糊背板'];
   private holdingHandCallback = (status: motion.HoldingHandStatus): void => {
     const leftHandHeld = GripUtil.getLeftHandHeld(status);
     if (leftHandHeld !== null) {
@@ -68,23 +79,30 @@ export struct SettingsPageContent {
   }
 
   private getGlassCardColor(): ResourceColor {
-    return UiStyle.GLASS_CARD_BG;
+    return $r('app.color.colorGlassCard');
   }
 
   private getGlassCardBorder(): ResourceColor {
-    return UiStyle.GLASS_CARD_BORDER;
+    return $r('app.color.colorGlassBorder');
   }
 
   private getGlassControlColor(): ResourceColor {
-    return UiStyle.GLASS_CONTROL_BG;
+    return $r('app.color.colorGlassControl');
   }
 
   private getGlassSelectedColor(): ResourceColor {
-    return UiStyle.GLASS_SELECTED_BG;
+    return $r('app.color.colorGlassSelected');
   }
 
   private getGlassShadowColor(): ResourceColor {
-    return UiStyle.GLASS_CARD_SHADOW;
+    return $r('app.color.colorGlassShadow');
+  }
+
+  private normalizeWidgetRefreshTime(value: number): number {
+    if (value < 30) {
+      return 30;
+    }
+    return Math.min(Math.round(value / 30) * 30, 120);
   }
 
   async aboutToAppear(): Promise<void> {
@@ -95,13 +113,18 @@ export struct SettingsPageContent {
     this.widgetDark = await this.prefs.getBoolean('widget_dark', false);
     this.widgetShadow = await this.prefs.getBoolean('widget_shadow', true);
     this.widgetCenter = await this.prefs.getBoolean('widget_center', true);
-    this.widgetRefreshTime = await this.prefs.getNumber('widget_refresh_time', 30);
+    const savedWidgetRefreshTime = await this.prefs.getNumber('widget_refresh_time', 30);
+    this.widgetRefreshTime = this.normalizeWidgetRefreshTime(savedWidgetRefreshTime);
+    if (this.widgetRefreshTime !== savedWidgetRefreshTime) {
+      await this.prefs.putNumber('widget_refresh_time', this.widgetRefreshTime);
+    }
     this.selectedFeedIndex = await this.prefs.getNumber('feed_code', 0);
     this.adaptiveGripEnabled = await this.prefs.getBoolean('adaptive_grip_enabled', true);
     await this.loadBackgroundSettings();
+    await this.loadWidgetBackgroundSettings();
     await this.loadFeedList();
     if (this.adaptiveGripEnabled) {
-      this.startGripAwareness();
+      await this.startGripAwareness();
     }
   }
 
@@ -117,12 +140,19 @@ export struct SettingsPageContent {
     }
   }
 
-  private startGripAwareness(): void {
+  private async startGripAwareness(): Promise<boolean> {
     this.stopGripAwareness();
+    const hasPermission = await PermissionUtil.request(this.context, PermissionUtil.DETECT_GESTURE, 'SettingsPage');
+    if (!hasPermission) {
+      this.applyGripSide(false);
+      return false;
+    }
     try {
       motion.on('holdingHandChanged', this.holdingHandCallback);
+      return true;
     } catch (e) {
       console.warn('SettingsPage', `holdingHandChanged unsupported or permission denied: ${JSON.stringify(e)}`);
+      return false;
     }
   }
 
@@ -155,6 +185,12 @@ export struct SettingsPageContent {
     this.backgroundModeIndex = await AppBackgroundUtil.getMode(this.prefs);
     this.backgroundApiText = await AppBackgroundUtil.getApiUri(this.prefs);
     this.appBackgroundUri = await AppBackgroundUtil.getBackgroundUri(this.prefs);
+  }
+
+  private async loadWidgetBackgroundSettings(): Promise<void> {
+    const mode = await WidgetBackgroundUtil.getMode(this.prefs);
+    this.widgetBackgroundModeIndex =
+      mode === WidgetBackgroundMode.BLUR ? WIDGET_BACKGROUND_BLUR_INDEX : WIDGET_BACKGROUND_TRANSPARENT_INDEX;
   }
 
   private async reloadFeedMenu(): Promise<void> {
@@ -248,6 +284,19 @@ export struct SettingsPageContent {
     this.appBackgroundUri = await AppBackgroundUtil.setApi(this.prefs, apiUri);
     this.backgroundModeIndex = AppBackgroundMode.IMAGE_API;
     promptAction.showToast({ message: $r('app.string.succeed') });
+  }
+
+  private async changeWidgetBackgroundMode(index: number): Promise<void> {
+    if (index === WIDGET_BACKGROUND_TRANSPARENT_INDEX) {
+      this.widgetBackgroundModeIndex = WIDGET_BACKGROUND_TRANSPARENT_INDEX;
+      await WidgetBackgroundUtil.setDefault(this.prefs);
+      await this.refreshWidgetForms();
+      return;
+    }
+
+    this.widgetBackgroundModeIndex = WIDGET_BACKGROUND_BLUR_INDEX;
+    await WidgetBackgroundUtil.setBlur(this.prefs);
+    await this.refreshWidgetForms();
   }
 
   private async selectFeed(index: number): Promise<void> {
@@ -393,7 +442,11 @@ export struct SettingsPageContent {
         this.adaptiveGripEnabled = value;
         await this.prefs.putBoolean('adaptive_grip_enabled', value);
         if (value) {
-          this.startGripAwareness();
+          const started = await this.startGripAwareness();
+          if (!started) {
+            this.adaptiveGripEnabled = false;
+            await this.prefs.putBoolean('adaptive_grip_enabled', false);
+          }
         } else {
           this.stopGripAwareness();
           this.applyGripSide(false);
@@ -473,7 +526,9 @@ export struct SettingsPageContent {
         await this.refreshWidgetForms();
       })
       this.SettingDivider()
-      this.RefreshSliderRow($r('app.string.widget_refresh_text'), this.widgetRefreshTime, 10, 120, 10, 'MIN',
+      this.WidgetBackgroundModeRow()
+      this.SettingDivider()
+      this.RefreshSliderRow($r('app.string.widget_refresh_text'), this.widgetRefreshTime, 30, 120, 30, 'MIN',
         async (value: number) => {
           this.widgetRefreshTime = value;
           await this.prefs.putNumber('widget_refresh_time', value);
@@ -512,7 +567,7 @@ export struct SettingsPageContent {
     .backgroundColor(this.getGlassCardColor())
     .border({ width: 1, color: this.getGlassCardBorder() })
     .borderRadius(UiStyle.CARD_RADIUS)
-    .shadow({ radius: 14, color: UiStyle.GLASS_CARD_SHADOW, offsetX: 0, offsetY: 6 })
+    .shadow({ radius: 14, color: this.getGlassShadowColor(), offsetX: 0, offsetY: 6 })
   }
 
   @Builder
@@ -724,6 +779,39 @@ export struct SettingsPageContent {
     }
     .width('100%')
     .padding({ left: UiStyle.CARD_SIDE, right: UiStyle.CARD_SIDE, top: 10, bottom: 14 })
+  }
+
+  @Builder
+  WidgetBackgroundModeRow() {
+    Column() {
+      Row() {
+        this.SettingLabel($r('app.string.widget_background_mode'))
+        Blank()
+        Select(this.widgetBackgroundModes.map((item: string) => ({ value: item } as SelectOption)))
+          .selected(this.widgetBackgroundModeIndex)
+          .value(this.widgetBackgroundModes[this.widgetBackgroundModeIndex])
+          .font({ size: 16, weight: FontWeight.Medium })
+          .fontColor($r('app.color.colorText2'))
+          .backgroundColor(this.getGlassControlColor())
+          .borderRadius(24)
+          .height(44)
+          .onSelect(async (index: number) => {
+            await this.changeWidgetBackgroundMode(index);
+          })
+      }
+      .width('100%')
+      .height(UiStyle.LIST_ROW_HEIGHT)
+      .padding({ left: UiStyle.CARD_SIDE, right: UiStyle.CARD_SIDE })
+
+      if (this.widgetBackgroundModeIndex === WIDGET_BACKGROUND_BLUR_INDEX) {
+        Text($r('app.string.widget_blur_flagship_only'))
+          .fontSize(12)
+          .fontColor($r('app.color.colorText4'))
+          .width('100%')
+          .padding({ left: UiStyle.CARD_SIDE, right: UiStyle.CARD_SIDE, bottom: 12 })
+      }
+    }
+    .width('100%')
   }
 
   @Builder

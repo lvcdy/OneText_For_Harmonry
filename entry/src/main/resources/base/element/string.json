@@ -13,10 +13,6 @@
             "value": "Hitokoto"
         },
         {
-            "name": "widget_display_name",
-            "value": "Hitokoto Widget"
-        },
-        {
             "name": "widget_desc",
             "value": "Display a random quote on home screen"
         },
@@ -45,12 +41,8 @@
             "value": "Save failed"
         },
         {
-            "name": "save_permission_denied",
-            "value": "Photos permission is required to save images."
-        },
-        {
-            "name": "permission_write_imagevideo_reason",
-            "value": "Allow Hitokoto to save quote screenshots to Photos."
+            "name": "permission_detect_gesture_reason",
+            "value": "Allow Hitokoto to detect holding gestures for adaptive grip layout."
         },
         {
             "name": "refresh_button",
@@ -103,6 +95,14 @@
         {
             "name": "widget_shadow",
             "value": "With shadow"
+        },
+        {
+            "name": "widget_background_mode",
+            "value": "Widget Backplate"
+        },
+        {
+            "name": "widget_blur_flagship_only",
+            "value": "Blur backplate currently works only on flagship devices"
         },
         {
             "name": "default_text",
@@ -179,6 +179,18 @@
         {
             "name": "share_text",
             "value": "Share"
+        },
+        {
+            "name": "share_button",
+            "value": "Send"
+        },
+        {
+            "name": "share_empty",
+            "value": "Nothing to share"
+        },
+        {
+            "name": "share_failed",
+            "value": "Share failed"
         },
         {
             "name": "copied",

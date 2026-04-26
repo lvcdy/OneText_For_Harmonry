@@ -1,10 +1,14 @@
-import { abilityAccessCtrl, common, Permissions } from '@kit.AbilityKit';
+import { common, Want } from '@kit.AbilityKit';
 import { fileIo } from '@kit.CoreFileKit';
 import { pasteboard } from '@kit.BasicServicesKit';
 import { font, promptAction } from '@kit.ArkUI';
 import { HdsTabs, hdsMaterial } from '@kit.UIDesignKit';
 import { image } from '@kit.ImageKit';
+import { uniformTypeDescriptor } from '@kit.ArkData';
+import { systemShare } from '@kit.ShareKit';
 import { CoreUtil } from '../common/CoreUtil';
+import { OneTextMetaUtil } from '../common/OneTextMetaUtil';
+import { PermissionUtil } from '../common/PermissionUtil';
 import { PreferencesUtil } from '../common/PreferencesUtil';
 import { UiStyle } from '../common/UiStyle';
 import { AppBackgroundLayer, AppBackgroundUtil } from '../common/AppBackgroundUtil';
@@ -39,7 +43,7 @@ const MINE_FONT_CARD_TOP: number = 42;
 const MINE_FONT_CARD_OFFSET_Y: number = 0;
 const MINE_SETTINGS_CARD_TOP: number = 14;
 const MINE_SETTINGS_CARD_OFFSET_Y: number = 0;
-const WRITE_IMAGEVIDEO_PERMISSION: Permissions = 'ohos.permission.WRITE_IMAGEVIDEO';
+const DONATE_URL: string = 'https://hitokoto.cn/donate';
 
 /**
  * 主页面 - 替代 Android MainActivity
@@ -74,6 +78,7 @@ struct Index {
   @State hasHuaweiAccount: boolean = false;
   @State adaptiveGripEnabled: boolean = true;
   @State pageWidth: number = 0;
+  @State showFontSizeControls: boolean = false;
   @StorageLink('appBackgroundUri') appBackgroundUri: string = '';
   @Provide('navPathStack') navPathStack: NavPathStack = new NavPathStack();
 
@@ -105,23 +110,23 @@ struct Index {
   }
 
   private getGlassCardColor(): ResourceColor {
-    return UiStyle.GLASS_CARD_BG;
+    return $r('app.color.colorGlassCard');
   }
 
   private getGlassCardBorder(): ResourceColor {
-    return UiStyle.GLASS_CARD_BORDER;
+    return $r('app.color.colorGlassBorder');
   }
 
   private getGlassShadowColor(): ResourceColor {
-    return UiStyle.GLASS_CARD_SHADOW;
+    return $r('app.color.colorGlassShadow');
   }
 
   private getGlassControlColor(): ResourceColor {
-    return UiStyle.GLASS_CONTROL_BG;
+    return $r('app.color.colorGlassControl');
   }
 
   private getGlassSelectedColor(): ResourceColor {
-    return UiStyle.GLASS_SELECTED_BG;
+    return $r('app.color.colorGlassSelected');
   }
 
   async aboutToAppear(): Promise<void> {
@@ -157,7 +162,7 @@ struct Index {
       }
 
       if (this.adaptiveGripEnabled) {
-        this.startGripAwareness();
+        await this.startGripAwareness();
       }
     } catch (e) {
       this.isLoading = false;
@@ -177,12 +182,19 @@ struct Index {
     }
   }
 
-  private startGripAwareness(): void {
+  private async startGripAwareness(): Promise<boolean> {
     this.stopGripAwareness();
+    const hasPermission = await PermissionUtil.request(this.context, PermissionUtil.DETECT_GESTURE, 'Index');
+    if (!hasPermission) {
+      this.applyGripSide(false);
+      return false;
+    }
     try {
       motion.on('holdingHandChanged', this.holdingHandCallback);
+      return true;
     } catch (e) {
       console.warn('Index', `holdingHandChanged unsupported or permission denied: ${JSON.stringify(e)}`);
+      return false;
     }
   }
 
@@ -240,6 +252,19 @@ struct Index {
       promptAction.showToast({ message: message });
     } catch (e) {
       console.warn('Index', `showToast skipped: ${JSON.stringify(e)}`);
+    }
+  }
+
+  private async openExternalLink(url: string): Promise<void> {
+    const want: Want = {
+      action: 'ohos.want.action.viewData',
+      uri: url
+    };
+    try {
+      await this.context.startAbility(want);
+    } catch (e) {
+      console.error('Index', `openExternalLink error: ${JSON.stringify(e)}`);
+      this.showToast('无法打开链接');
     }
   }
 
@@ -324,12 +349,8 @@ struct Index {
           this.oneText = await this.coreUtil.getOneTextFromApi(feedMap);
           await this.coreUtil.refreshLatestRefreshTime();
         } else {
-          try {
-            const jsonObj = JSON.parse(apiString) as Record<string, string>;
-            this.oneText = this.coreUtil.convertOneText(jsonObj, feedMap);
-          } catch (e) {
-            this.oneText = await this.coreUtil.getOneTextFromApi(feedMap);
-          }
+          this.oneText = this.coreUtil.convertApiResponse(apiString, feedMap) ??
+            await this.coreUtil.getOneTextFromApi(feedMap);
         }
       } else {
         // 远程/本地类型订阅源
@@ -370,25 +391,72 @@ struct Index {
     this.showToast($r('app.string.copied'));
   }
 
+  private buildShareText(): string {
+    return OneTextMetaUtil.buildShareText(this.oneText, CoreUtil.TEXT_REPLACE_HOLDER, CoreUtil.TEXT_REPLACE);
+  }
+
+  private setTextFontSize(value: number): void {
+    this.textFontSize = value;
+    this.prefs.putNumber('onetext_text_size', value);
+  }
+
+  private setByFontSize(value: number): void {
+    this.byFontSize = value;
+    this.prefs.putNumber('onetext_by_size', value);
+  }
+
+  private setFromFontSize(value: number): void {
+    this.fromFontSize = value;
+    this.prefs.putNumber('onetext_from_size', value);
+  }
+
+  private setTimeFontSize(value: number): void {
+    this.timeFontSize = value;
+    this.prefs.putNumber('onetext_time_size', value);
+  }
+
+  private async shareCurrentText(): Promise<void> {
+    try {
+      const shareText = this.buildShareText();
+      if (shareText === '') {
+        this.showToast($r('app.string.share_empty'));
+        return;
+      }
+      const record: systemShare.SharedRecord = {
+        utd: uniformTypeDescriptor.UniformDataType.PLAIN_TEXT,
+        content: shareText,
+        title: 'Hitokoto',
+        description: this.oneText.from
+      };
+      const shareData = new systemShare.SharedData(record);
+      const controller = new systemShare.ShareController(shareData);
+      await controller.show(this.context, {
+        previewMode: systemShare.SharePreviewMode.DEFAULT
+      });
+    } catch (e) {
+      console.error('Index', `shareCurrentText error: ${JSON.stringify(e)}`);
+      this.showToast($r('app.string.share_failed'));
+    }
+  }
+
   /**
-   * 保存截图
+   * 保存纯色卡片截图
    */
   private async saveScreenshot(): Promise<void> {
     try {
-      const hasPermission = await this.ensureWriteImageVideoPermission();
-      if (!hasPermission) {
-        this.showToast($r('app.string.save_permission_denied'));
-        return;
-      }
-
-      const pixelMap = await componentSnapshot.get('onetext_card');
-      const helper = photoAccessHelper.getPhotoAccessHelper(this.context);
-      const uri = await helper.createAsset(photoAccessHelper.PhotoType.IMAGE, 'jpg');
+      const pixelMap = await componentSnapshot.get('onetext_save_card');
       const packer = image.createImagePacker();
       const data = await packer.packing(pixelMap, { format: 'image/jpeg', quality: 100 });
+      const helper = photoAccessHelper.getPhotoAccessHelper(this.context);
+      const uri = await helper.createAsset(photoAccessHelper.PhotoType.IMAGE, 'jpg', {
+        title: `Hitokoto_${Date.now()}`
+      });
       const file = fileIo.openSync(uri, fileIo.OpenMode.WRITE_ONLY);
-      fileIo.writeSync(file.fd, data);
-      fileIo.closeSync(file);
+      try {
+        fileIo.writeSync(file.fd, data);
+      } finally {
+        fileIo.closeSync(file);
+      }
       this.showToast($r('app.string.save_succeed'));
     } catch (e) {
       console.error('Index', `saveScreenshot error: ${JSON.stringify(e)}`);
@@ -396,20 +464,9 @@ struct Index {
     }
   }
 
-  private async ensureWriteImageVideoPermission(): Promise<boolean> {
-    try {
-      const atManager = abilityAccessCtrl.createAtManager();
-      const result = await atManager.requestPermissionsFromUser(this.context, [WRITE_IMAGEVIDEO_PERMISSION]);
-      return result.authResults.length > 0 &&
-        result.authResults[0] === abilityAccessCtrl.GrantStatus.PERMISSION_GRANTED;
-    } catch (e) {
-      console.error('Index', `request save permission error: ${JSON.stringify(e)}`);
-      return false;
-    }
-  }
-
   build() {
     Stack() {
+      this.SaveImageCard()
       AppBackgroundLayer()
 
       Navigation(this.navPathStack) {
@@ -533,103 +590,236 @@ struct Index {
   }
 
   @Builder
-  QuoteCard() {
-    Column() {
-      Stack() {
-        Column() {
-        }
-        .width(190)
-        .height(190)
-        .backgroundColor($r('app.color.colorSelectedBg'))
-        .borderRadius(95)
-        .opacity(0.78)
-        .position({ x: -54, y: -62 })
+  SaveImageCard() {
+    Stack() {
+      Text('“')
+        .fontSize(72)
+        .fontWeight(FontWeight.Bold)
+        .fontColor($r('app.color.colorPrimary'))
+        .opacity(0.18)
+        .position({ x: 24, y: 14 })
         .zIndex(0)
 
+      Column()
+        .width(72)
+        .height(3)
+        .backgroundColor($r('app.color.colorPrimary'))
+        .borderRadius(2)
+        .opacity(0.54)
+        .position({ x: 30, y: 34 })
+        .zIndex(1)
+
+      if (this.sealVisible) {
+        Image($r('app.media.moemiku'))
+          .width(142)
+          .height(142)
+          .opacity(0.16)
+          .position({ x: 176, y: 144 })
+          .zIndex(1)
+      }
+
+      Column() {
+        Blank()
+
+        Text(this.oneText.text.replace(CoreUtil.TEXT_REPLACE_HOLDER, CoreUtil.TEXT_REPLACE))
+          .fontSize(this.textFontSize)
+          .fontFamily(this.getCurrentFontFamily())
+          .fontWeight(FontWeight.Medium)
+          .fontColor($r('app.color.colorText1'))
+          .width('100%')
+          .textAlign(TextAlign.Center)
+          .lineHeight(this.textFontSize * 1.55)
+          .maxLines(4)
+          .textOverflow({ overflow: TextOverflow.Ellipsis })
+
+        Blank()
+
         Column() {
-        }
-        .width(120)
-        .height(120)
-        .backgroundColor('#F7FAFF')
-        .borderRadius(60)
-        .opacity(0.9)
-        .position({ x: this.isWideLayout() ? 358 : 248, y: 202 })
-        .zIndex(0)
-
-        if (this.sealVisible) {
-          Image($r('app.media.moemiku'))
-            .width(158)
-            .height(158)
-            .opacity(0.42)
-            .position({ x: this.isWideLayout() ? 308 : 198, y: 112 })
-            .zIndex(1)
-        }
-
-        if (this.oneText.text !== '') {
-          Column() {
-            Text(this.oneText.text.replace(CoreUtil.TEXT_REPLACE_HOLDER, CoreUtil.TEXT_REPLACE))
-              .fontSize(this.textFontSize)
+          if (OneTextMetaUtil.getAuthor(this.oneText.by) !== '') {
+            Text(`-- ${OneTextMetaUtil.getAuthor(this.oneText.by)}`)
+              .fontSize(this.byFontSize)
               .fontFamily(this.getCurrentFontFamily())
-              .fontWeight(FontWeight.Medium)
-              .fontColor($r('app.color.colorText1'))
-              .width('100%')
+              .fontColor($r('app.color.colorText3'))
               .textAlign(TextAlign.Center)
-              .lineHeight(this.textFontSize * 1.55)
-              .maxLines(this.isWideLayout() ? 6 : 4)
+              .width('100%')
+              .maxLines(2)
               .textOverflow({ overflow: TextOverflow.Ellipsis })
-              .onClick(() => {
-                this.copyToClipboard(this.oneText.text);
-              })
+          }
 
-            if (this.oneText.by !== '') {
-              Text(`-- ${this.oneText.by}`)
-                .fontSize(this.byFontSize)
-                .fontFamily(this.getCurrentFontFamily())
-                .fontColor($r('app.color.colorText3'))
-                .textAlign(TextAlign.Center)
-                .margin({ top: 18 })
-                .onClick(() => {
-                  this.copyToClipboard(this.oneText.by);
-                })
-            }
-
-            if (this.oneText.from !== '' || this.oneText.time !== '') {
-              Text(this.oneText.from !== '' ? this.oneText.from : this.oneText.time)
+          Row() {
+            if (OneTextMetaUtil.shouldShowSource(this.oneText.by, this.oneText.from)) {
+              Text(this.oneText.from)
                 .fontSize(this.fromFontSize)
                 .fontFamily(this.getCurrentFontFamily())
                 .fontColor($r('app.color.colorText4'))
-                .textAlign(TextAlign.Center)
-                .margin({ top: 18 })
+                .maxLines(1)
+                .textOverflow({ overflow: TextOverflow.Ellipsis })
+            }
+
+            if (OneTextMetaUtil.shouldShowSource(this.oneText.by, this.oneText.from) && this.oneText.time !== '') {
+              Text(' · ')
+                .fontSize(this.fromFontSize)
+                .fontColor($r('app.color.colorText4'))
+            }
+
+            if (this.oneText.time !== '') {
+              Text(this.oneText.time)
+                .fontSize(this.timeFontSize)
+                .fontFamily(this.getCurrentFontFamily())
+                .fontColor($r('app.color.colorText4'))
+                .maxLines(1)
+                .textOverflow({ overflow: TextOverflow.Ellipsis })
+            }
+          }
+          .width('100%')
+          .justifyContent(FlexAlign.Center)
+          .alignItems(VerticalAlign.Center)
+          .margin({ top: 10 })
+        }
+        .width('100%')
+      }
+      .width('100%')
+      .height('100%')
+      .alignItems(HorizontalAlign.Center)
+      .padding({ left: 30, right: 30, top: 62, bottom: 26 })
+      .zIndex(2)
+    }
+    .id('onetext_save_card')
+    .width(360)
+    .height(306)
+    .backgroundColor($r('app.color.colorCard'))
+    .border({ width: 1, color: $r('app.color.colorCardBorder') })
+    .borderRadius(UiStyle.CARD_RADIUS)
+    .position({ x: 0, y: 0 })
+    .zIndex(0)
+  }
+
+  @Builder
+  QuoteCard() {
+    Stack() {
+      Text('“')
+        .fontSize(this.isWideLayout() ? 86 : 72)
+        .fontWeight(FontWeight.Bold)
+        .fontColor($r('app.color.colorPrimary'))
+        .opacity(0.16)
+        .position({ x: 24, y: 14 })
+        .zIndex(0)
+
+      Column()
+        .width(this.isWideLayout() ? 92 : 72)
+        .height(3)
+        .backgroundColor($r('app.color.colorPrimary'))
+        .borderRadius(2)
+        .opacity(0.48)
+        .position({ x: 30, y: 34 })
+        .zIndex(1)
+
+      if (this.sealVisible) {
+        Image($r('app.media.moemiku'))
+          .width(this.isWideLayout() ? 166 : 142)
+          .height(this.isWideLayout() ? 166 : 142)
+          .opacity(0.18)
+          .position({ x: this.isWideLayout() ? 356 : 176, y: this.isWideLayout() ? 166 : 144 })
+          .zIndex(1)
+      }
+
+      Column() {
+        Blank()
+
+        if (this.oneText.text !== '') {
+          Text(this.oneText.text.replace(CoreUtil.TEXT_REPLACE_HOLDER, CoreUtil.TEXT_REPLACE))
+            .fontSize(this.textFontSize)
+            .fontFamily(this.getCurrentFontFamily())
+            .fontWeight(FontWeight.Medium)
+            .fontColor($r('app.color.colorText1'))
+            .width('100%')
+            .textAlign(TextAlign.Center)
+            .lineHeight(this.textFontSize * 1.55)
+            .maxLines(this.isWideLayout() ? 6 : 4)
+            .textOverflow({ overflow: TextOverflow.Ellipsis })
+            .onClick(() => {
+              this.copyToClipboard(this.oneText.text);
+            })
+        }
+
+        Blank()
+
+        Column() {
+          if (this.oneText.by !== '') {
+            Text(`-- ${OneTextMetaUtil.getAuthor(this.oneText.by)}`)
+              .fontSize(this.byFontSize)
+              .fontFamily(this.getCurrentFontFamily())
+              .fontColor($r('app.color.colorText3'))
+              .textAlign(TextAlign.Center)
+              .maxLines(1)
+              .textOverflow({ overflow: TextOverflow.Ellipsis })
+              .onClick(() => {
+                this.copyToClipboard(this.oneText.by);
+              })
+          }
+
+          Row() {
+            if (OneTextMetaUtil.shouldShowSource(this.oneText.by, this.oneText.from)) {
+              Text(this.oneText.from)
+                .fontSize(this.fromFontSize)
+                .fontFamily(this.getCurrentFontFamily())
+                .fontColor($r('app.color.colorText4'))
+                .maxLines(1)
+                .textOverflow({ overflow: TextOverflow.Ellipsis })
                 .onClick(() => {
-                  this.copyToClipboard(this.oneText.from !== '' ? this.oneText.from : this.oneText.time);
+                  this.copyToClipboard(this.oneText.from);
+                })
+            }
+
+            if (OneTextMetaUtil.shouldShowSource(this.oneText.by, this.oneText.from) && this.oneText.time !== '') {
+              Text(' · ')
+                .fontSize(this.fromFontSize)
+                .fontColor($r('app.color.colorText4'))
+            }
+
+            if (this.oneText.time !== '') {
+              Text(this.oneText.time)
+                .fontSize(this.timeFontSize)
+                .fontFamily(this.getCurrentFontFamily())
+                .fontColor($r('app.color.colorText4'))
+                .maxLines(1)
+                .textOverflow({ overflow: TextOverflow.Ellipsis })
+                .onClick(() => {
+                  this.copyToClipboard(this.oneText.time);
                 })
             }
           }
           .width('100%')
-          .height('100%')
           .justifyContent(FlexAlign.Center)
-          .alignItems(HorizontalAlign.Center)
-          .padding({ left: 24, right: 24, top: 24, bottom: 24 })
-          .zIndex(2)
+          .alignItems(VerticalAlign.Center)
+          .margin({ top: 10 })
         }
+        .width('100%')
       }
-      .id('onetext_card')
       .width('100%')
-      .height(this.isWideLayout() ? 360 : 306)
-      .backgroundColor(this.getGlassCardColor())
-      .border({ width: 1, color: this.getGlassCardBorder() })
-      .borderRadius(UiStyle.CARD_RADIUS)
-      .shadow({ radius: 24, color: this.getGlassShadowColor(), offsetX: 0, offsetY: 8 })
+      .height('100%')
+      .alignItems(HorizontalAlign.Center)
+      .padding({ left: this.isWideLayout() ? 44 : 30, right: this.isWideLayout() ? 44 : 30, top: 62, bottom: 26 })
+      .zIndex(2)
     }
+    .id('onetext_card')
     .width('100%')
-    .padding({ top: 0 })
+    .height(this.isWideLayout() ? 360 : 306)
+    .backgroundColor(this.getGlassCardColor())
+    .backgroundBlurStyle(BlurStyle.BACKGROUND_THIN)
+    .backdropBlur(18)
+    .border({ width: 1, color: this.getGlassCardBorder() })
+    .borderRadius(UiStyle.CARD_RADIUS)
+    .shadow({ radius: 24, color: this.getGlassShadowColor(), offsetX: 0, offsetY: 8 })
   }
 
   @Builder
   HomeActionCard() {
     Column() {
-      this.ActionRow($r('app.string.save_text'), $r('app.string.save_button'), () => {
-        this.saveScreenshot();
+      this.SaveActionRow()
+
+      this.ActionRow($r('app.string.share_text'), $r('app.string.share_button'), () => {
+        this.shareCurrentText();
       })
 
       this.ActionRow($r('app.string.refresh_onetext_text'), $r('app.string.refresh_button'), () => {
@@ -642,9 +832,21 @@ struct Index {
         this.showToast(this.sealVisible ? $r('app.string.seal_button_ison') : $r('app.string.seal_button_isoff'));
       })
 
-      this.TextSizeSlider()
-      this.BySizeSlider()
-      this.TimeSizeSlider()
+      this.FontSizeToggle()
+      if (this.showFontSizeControls) {
+        this.FontSizeSliderRow(this.textFontSize, 12, 48, 23, (value: number) => {
+          this.setTextFontSize(value);
+        })
+        this.FontSizeSliderRow(this.byFontSize, 8, 36, 18, (value: number) => {
+          this.setByFontSize(value);
+        })
+        this.FontSizeSliderRow(this.fromFontSize, 8, 24, 15, (value: number) => {
+          this.setFromFontSize(value);
+        })
+        this.FontSizeSliderRow(this.timeFontSize, 8, 24, 15, (value: number) => {
+          this.setTimeFontSize(value);
+        })
+      }
     }
     .width('100%')
     .padding({ left: 18, right: 18, top: 20, bottom: 18 })
@@ -659,41 +861,72 @@ struct Index {
   HomeHeader() {
     Column() {
       Row() {
-        Column() {
-          Text('Hitokoto')
-            .fontSize(30)
-            .fontWeight(FontWeight.Bold)
-            .fontColor($r('app.color.colorText1'))
+        Row() {
+          Image($r('app.media.app_icon'))
+            .width(42)
+            .height(42)
+            .borderRadius(12)
+            .shadow({ radius: 10, color: this.getGlassShadowColor(), offsetX: 0, offsetY: 4 })
 
-          Text($r('app.string.home_subtitle'))
-            .fontSize(13)
-            .fontColor($r('app.color.colorText4'))
-            .margin({ top: 2 })
+          Column() {
+            Text('Hitokoto')
+              .fontSize(30)
+              .fontWeight(FontWeight.Bold)
+              .fontColor($r('app.color.colorText1'))
+              .textShadow({ radius: 8, color: '#66000000', offsetX: 0, offsetY: 2 })
+
+            Text($r('app.string.home_subtitle'))
+              .fontSize(13)
+              .fontColor($r('app.color.colorText4'))
+              .margin({ top: 2 })
+              .textShadow({ radius: 6, color: '#66000000', offsetX: 0, offsetY: 1 })
+          }
+          .alignItems(HorizontalAlign.Start)
+          .margin({ left: 12 })
         }
-        .alignItems(HorizontalAlign.Start)
+        .layoutWeight(1)
+        .alignItems(VerticalAlign.Center)
 
-        Blank()
-
-        Image($r('app.media.ic_heart'))
-          .width(28)
-          .height(28)
-          .margin({ right: 18 })
-
-        Image($r('app.media.ic_settings'))
-          .width(28)
-          .height(28)
-          .onClick(() => {
+        Row() {
+          this.HeaderIconButton($r('app.media.ic_heart'), $r('app.color.colorPrimary'), () => {
+            this.openExternalLink(DONATE_URL);
+          })
+          this.HeaderIconButton($r('app.media.ic_settings'), $r('app.color.colorText2'), () => {
             this.navPathStack.pushPathByName('SettingsPage', null);
           })
+        }
+        .height(46)
+        .alignItems(VerticalAlign.Center)
       }
       .width('100%')
-      .height(50)
+      .height(54)
       .alignItems(VerticalAlign.Center)
-      .padding({ left: 24, right: 24 })
     }
     .width('100%')
     .height(UiStyle.HEADER_HEIGHT)
-    .padding({ top: UiStyle.PAGE_TOP })
+    .padding({ left: UiStyle.PAGE_SIDE, right: UiStyle.PAGE_SIDE, top: UiStyle.PAGE_TOP })
+  }
+
+  @Builder
+  HeaderIconButton(icon: ResourceStr, iconColor: ResourceColor, onClick: () => void) {
+    Stack() {
+      Image(icon)
+        .width(25)
+        .height(25)
+        .fillColor(iconColor)
+    }
+    .width(46)
+    .height(46)
+    .backgroundColor(this.getGlassCardColor())
+    .backgroundBlurStyle(BlurStyle.BACKGROUND_THIN)
+    .backdropBlur(18)
+    .border({ width: 1, color: this.getGlassCardBorder() })
+    .borderRadius(23)
+    .shadow({ radius: 12, color: this.getGlassShadowColor(), offsetX: 0, offsetY: 4 })
+    .margin({ left: 12 })
+    .onClick(() => {
+      onClick();
+    })
   }
 
   @Builder
@@ -958,6 +1191,48 @@ struct Index {
   }
 
   @Builder
+  SaveActionRow() {
+    Flex({
+      direction: this.isLeftHandHeld ? FlexDirection.Row : FlexDirection.RowReverse,
+      alignItems: ItemAlign.Center
+    }) {
+      Column() {
+        SaveButton({
+          text: SaveDescription.SAVE,
+          buttonType: ButtonType.Capsule
+        })
+          .borderRadius(21)
+          .fontSize(14)
+          .fontColor(Color.White)
+          .backgroundColor($r('app.color.colorPrimary'))
+          .width(96)
+          .height(44)
+          .onClick((event: ClickEvent, result: SaveButtonOnClickResult) => {
+            if (result === SaveButtonOnClickResult.SUCCESS) {
+              this.saveScreenshot();
+              return;
+            }
+            if (result === SaveButtonOnClickResult.TEMPORARY_AUTHORIZATION_FAILED) {
+              this.showToast($r('app.string.save_fail'));
+            }
+          })
+      }
+      .width(96)
+
+      Text($r('app.string.save_text'))
+        .fontSize(18)
+        .fontColor($r('app.color.colorText2'))
+        .layoutWeight(1)
+        .margin(this.isLeftHandHeld ? { left: 20, right: 0 } : { left: 0, right: 20 })
+        .textAlign(TextAlign.Start)
+    }
+    .width('100%')
+    .height(60)
+    .padding({ bottom: 14 })
+    .animation({ duration: 360, curve: Curve.Friction })
+  }
+
+  @Builder
   ActionRow(label: ResourceStr, buttonText: ResourceStr, onClick: () => void) {
     Flex({
       direction: this.isLeftHandHeld ? FlexDirection.Row : FlexDirection.RowReverse,
@@ -997,12 +1272,45 @@ struct Index {
   }
 
   @Builder
-  TextSizeSlider() {
+  FontSizeToggle() {
+    Flex({
+      direction: this.isLeftHandHeld ? FlexDirection.Row : FlexDirection.RowReverse,
+      alignItems: ItemAlign.Center
+    }) {
+      Column() {
+        Image($r('app.media.ic_expand'))
+          .width(16)
+          .height(16)
+          .opacity(0.65)
+          .rotate({ angle: this.showFontSizeControls ? 180 : 0 })
+      }
+      .width(96)
+      .height(44)
+      .justifyContent(FlexAlign.Center)
+      .alignItems(HorizontalAlign.Center)
+
+      Text('字号')
+        .fontSize(18)
+        .fontColor($r('app.color.colorText2'))
+        .layoutWeight(1)
+        .margin(this.isLeftHandHeld ? { left: 20, right: 0 } : { left: 0, right: 20 })
+        .textAlign(TextAlign.Start)
+    }
+    .width('100%')
+    .height(50)
+    .onClick(() => {
+      this.showFontSizeControls = !this.showFontSizeControls;
+    })
+  }
+
+  @Builder
+  FontSizeSliderRow(value: number, min: number, max: number, defaultValue: number,
+    onValueChange: (value: number) => void) {
     Row() {
       Slider({
-        value: this.textFontSize,
-        min: 12,
-        max: 48,
+        value: value,
+        min: min,
+        max: max,
         step: 1,
         style: SliderStyle.OutSet
       })
@@ -1011,8 +1319,7 @@ struct Index {
         .trackColor($r('app.color.colorMD2BG'))
         .selectedColor($r('app.color.colorPrimary'))
         .onChange((value: number) => {
-          this.textFontSize = value;
-          this.prefs.putNumber('onetext_text_size', value);
+          onValueChange(value);
         })
         .margin({ left: 36, right: 24 })
 
@@ -1027,78 +1334,7 @@ struct Index {
         .border({ width: 1, color: this.getGlassCardBorder() })
         .padding({ top: 10 })
         .onClick(() => {
-          this.textFontSize = 23;
-          this.prefs.putNumber('onetext_text_size', 23);
-        })
-    }
-    .width('100%')
-    .padding({ bottom: 16 })
-  }
-
-  @Builder
-  BySizeSlider() {
-    Row() {
-      Slider({ value: this.byFontSize, min: 8, max: 36, step: 1, style: SliderStyle.OutSet })
-        .layoutWeight(1)
-        .blockColor($r('app.color.colorPrimary'))
-        .trackColor($r('app.color.colorMD2BG'))
-        .selectedColor($r('app.color.colorPrimary'))
-        .onChange((value: number) => {
-          this.byFontSize = value;
-          this.prefs.putNumber('onetext_by_size', value);
-        })
-        .margin({ left: 36, right: 24 })
-
-      Text($r('app.string.default_text'))
-        .fontSize(14)
-        .fontColor($r('app.color.colorPrimary'))
-        .width(82)
-        .height(38)
-        .textAlign(TextAlign.Center)
-        .borderRadius(19)
-        .backgroundColor(this.getGlassSelectedColor())
-        .border({ width: 1, color: this.getGlassCardBorder() })
-        .padding({ top: 10 })
-        .onClick(() => {
-          this.byFontSize = 18;
-          this.prefs.putNumber('onetext_by_size', 18);
-        })
-    }
-    .width('100%')
-    .padding({ bottom: 16 })
-  }
-
-  @Builder
-  TimeSizeSlider() {
-    Row() {
-      Slider({ value: this.timeFontSize, min: 8, max: 24, step: 1, style: SliderStyle.OutSet })
-        .layoutWeight(1)
-        .blockColor($r('app.color.colorPrimary'))
-        .trackColor($r('app.color.colorMD2BG'))
-        .selectedColor($r('app.color.colorPrimary'))
-        .onChange((value: number) => {
-          this.timeFontSize = value;
-          this.fromFontSize = value;
-          this.prefs.putNumber('onetext_time_size', value);
-          this.prefs.putNumber('onetext_from_size', value);
-        })
-        .margin({ left: 36, right: 24 })
-
-      Text($r('app.string.default_text'))
-        .fontSize(14)
-        .fontColor($r('app.color.colorPrimary'))
-        .width(82)
-        .height(38)
-        .textAlign(TextAlign.Center)
-        .borderRadius(19)
-        .backgroundColor(this.getGlassSelectedColor())
-        .border({ width: 1, color: this.getGlassCardBorder() })
-        .padding({ top: 10 })
-        .onClick(() => {
-          this.timeFontSize = 15;
-          this.fromFontSize = 15;
-          this.prefs.putNumber('onetext_time_size', 15);
-          this.prefs.putNumber('onetext_from_size', 15);
+          onValueChange(defaultValue);
         })
     }
     .width('100%')

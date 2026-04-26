@@ -3,6 +3,8 @@ import { OneTextItem, FeedConfig } from '../model/DataModels';
 import { PreferencesUtil } from './PreferencesUtil';
 import { FileUtil } from './FileUtil';
 import { HttpUtil } from './HttpUtil';
+import { WidgetBackgroundUtil } from './AppBackgroundUtil';
+import { AppLanguageUtil } from './AppLanguageUtil';
 
 /**
  * 核心业务逻辑工具类 - 替代 Android CoreUtil
@@ -59,13 +61,94 @@ export class CoreUtil {
     };
   }
 
-  private parseOneTextArray(arrayStr: string, action: string): Record<string, string>[] {
+  private parseOneTextArray(arrayStr: string, feedMap: FeedConfig, action: string): Record<string, string>[] {
     try {
-      return JSON.parse(arrayStr) as Record<string, string>[];
+      const payload = JSON.parse(arrayStr) as Object;
+      const resolvedPayload = this.resolveFeedPayload(payload, feedMap);
+      if (Array.isArray(resolvedPayload)) {
+        return resolvedPayload as Record<string, string>[];
+      }
+      if (this.isJsonObject(resolvedPayload)) {
+        return [resolvedPayload as Record<string, string>];
+      }
+      return [];
     } catch (e) {
       console.error('CoreUtil', `${action} error: ${JSON.stringify(e)}`);
       return [];
     }
+  }
+
+  private isJsonObject(value: Object | null | undefined): boolean {
+    return value !== null && value !== undefined && typeof value === 'object' && !Array.isArray(value);
+  }
+
+  private resolveFeedPayload(payload: Object, feedMap: FeedConfig): Object {
+    if (feedMap.object_key && feedMap.object_key.trim() !== '') {
+      const nestedValue = this.getNestedValue(payload, feedMap.object_key.trim());
+      if (nestedValue !== null) {
+        return nestedValue;
+      }
+    }
+
+    if (Array.isArray(payload)) {
+      return payload;
+    }
+
+    if (this.isJsonObject(payload)) {
+      const objectPayload = payload as Record<string, Object>;
+      const candidateKeys = ['data', 'list', 'items', 'result', 'results'];
+      for (const key of candidateKeys) {
+        const candidate = objectPayload[key];
+        if (Array.isArray(candidate) || this.isJsonObject(candidate)) {
+          return candidate;
+        }
+      }
+    }
+
+    return payload;
+  }
+
+  private getNestedValue(payload: Object, objectKey: string): Object | null {
+    const keys = objectKey.split('.');
+    let current: Object = payload;
+    for (const key of keys) {
+      if (!this.isJsonObject(current)) {
+        return null;
+      }
+      const nextValue = (current as Record<string, Object>)[key];
+      if (nextValue === null || nextValue === undefined) {
+        return null;
+      }
+      current = nextValue;
+    }
+    return current;
+  }
+
+  private getStringValue(jsonObj: Record<string, string>, key: string | undefined, defaultKey: string): string {
+    const value = jsonObj[key ?? defaultKey] ?? '';
+    if (typeof value === 'string') {
+      return value;
+    }
+    return String(value);
+  }
+
+  private convertPreferredLanguage(text: string): string {
+    if (text === '') {
+      return '';
+    }
+    return AppLanguageUtil.convertText(text);
+  }
+
+  private convertOneTextLanguage(oneText: OneTextItem): OneTextItem {
+    return {
+      text: this.convertPreferredLanguage(oneText.text),
+      by: this.convertPreferredLanguage(oneText.by),
+      from: this.convertPreferredLanguage(oneText.from),
+      time: this.convertPreferredLanguage(oneText.time),
+      uri: oneText.uri,
+      quote1: oneText.quote1,
+      quote2: oneText.quote2
+    };
   }
 
   private parseFeedArray(action: string): FeedConfig[] {
@@ -126,8 +209,10 @@ export class CoreUtil {
    */
   private async generateNewOneTextCode(): Promise<number> {
     const arrayStr = await this.getOneTextArray();
+    const feedCode = await this.prefs.getNumber('feed_code', 0);
+    const feedMap = await this.getFeedInformation(feedCode);
     let code = 0;
-    const arr = this.parseOneTextArray(arrayStr, 'generateNewOneTextCode');
+    const arr = this.parseOneTextArray(arrayStr, feedMap, 'generateNewOneTextCode');
     if (arr.length > 0) {
       code = Math.floor(Math.random() * arr.length);
     }
@@ -143,7 +228,7 @@ export class CoreUtil {
     const currentTimeMillis = Date.now();
     if (ifFromWidget) {
       const latestRefreshTime = await this.prefs.getNumber('onetext_latest_refresh_time', 0);
-      const refreshTime = await this.prefs.getNumber('widget_refresh_time', 30);
+      const refreshTime = Math.max(await this.prefs.getNumber('widget_refresh_time', 30), 30);
       return (currentTimeMillis - latestRefreshTime) >= (refreshTime * 60000);
     }
 
@@ -171,7 +256,7 @@ export class CoreUtil {
     const feedMap = await this.getFeedInformation(feedCode);
     const arrayStr = await this.getOneTextArray();
     const code = await this.getOneTextCode(forceRefresh, ifFromWidget);
-    const arr = this.parseOneTextArray(arrayStr, 'getOneText');
+    const arr = this.parseOneTextArray(arrayStr, feedMap, 'getOneText');
     if (arr.length > 0 && code < arr.length) {
       return this.convertOneText(arr[code], feedMap);
     }
@@ -204,30 +289,29 @@ export class CoreUtil {
       const keys = textKey.split('&&');
       let text = '';
       for (let i = 0; i < keys.length; i++) {
-        text += jsonObj[keys[i]] ?? '';
+        text += this.getStringValue(jsonObj, keys[i], 'text');
         if (i < keys.length - 1) {
           text += CoreUtil.TEXT_REPLACE_HOLDER;
         }
       }
       return text;
     }
-    return jsonObj[textKey] ?? '';
+    return this.getStringValue(jsonObj, textKey, 'text');
   }
 
   /**
    * 转换 Hitokoto 数据（包括简繁转换）
    */
   convertOneText(jsonObj: Record<string, string>, feedMap: FeedConfig): OneTextItem {
-    // 鸿蒙系统暂无内置简繁转换库，使用原始文本
     const text = this.getComposeText(jsonObj, feedMap);
-    const by = jsonObj[feedMap.by_key ?? 'by'] ?? '';
-    const from = jsonObj[feedMap.from_key ?? 'from'] ?? '';
-    const uri = jsonObj[feedMap.uri_key ?? 'uri'] ?? '';
+    const by = this.getStringValue(jsonObj, feedMap.by_key, 'by');
+    const from = this.getStringValue(jsonObj, feedMap.from_key, 'from');
+    const uri = this.getStringValue(jsonObj, feedMap.uri_key, 'uri');
 
     // 处理时间字段
     let time = '';
     try {
-      const timeStr = jsonObj[feedMap.time_key ?? 'time'] ?? '';
+      const timeStr = this.getStringValue(jsonObj, feedMap.time_key, 'time');
       if (timeStr.startsWith('[')) {
         const timeArr: string[] = JSON.parse(timeStr) as string[];
         const timeOfRecord = timeArr[0] ?? '';
@@ -237,16 +321,18 @@ export class CoreUtil {
         } else if (timeOfRecord) {
           time = `记录于：${timeOfRecord}`;
         }
+      } else {
+        time = timeStr;
       }
     } catch (e) {
-      // time 字段解析失败，忽略
+      time = this.getStringValue(jsonObj, feedMap.time_key, 'time');
     }
 
     return {
-      text: text,
-      by: by,
-      from: from,
-      time: time,
+      text: this.convertPreferredLanguage(text),
+      by: this.convertPreferredLanguage(by),
+      from: this.convertPreferredLanguage(from),
+      time: this.convertPreferredLanguage(time),
       uri: uri,
       quote1: '"',
       quote2: '"'
@@ -294,13 +380,33 @@ export class CoreUtil {
    */
   async getOneTextFromApi(feedMap: FeedConfig): Promise<OneTextItem> {
     try {
-      const result = await HttpUtil.get(feedMap.api_url ?? feedMap.feed_url ?? '');
+      const result = await HttpUtil.request(feedMap.api_url ?? feedMap.feed_url ?? '', feedMap.api_method ?? 'GET');
       await this.prefs.putString('api_string', result);
-      const jsonObj = JSON.parse(result) as Record<string, string>;
-      return this.convertOneText(jsonObj, feedMap);
+      return this.convertApiResponse(result, feedMap) ?? this.createEmptyOneText();
     } catch (e) {
       console.error('CoreUtil', `getOneTextFromApi error: ${JSON.stringify(e)}`);
       return this.createEmptyOneText();
+    }
+  }
+
+  convertApiResponse(result: string, feedMap: FeedConfig): OneTextItem | null {
+    try {
+      const payload = JSON.parse(result) as Object;
+      const resolvedPayload = this.resolveFeedPayload(payload, feedMap);
+      let jsonObj: Record<string, string> | null = null;
+      if (Array.isArray(resolvedPayload) && resolvedPayload.length > 0) {
+        const index = Math.floor(Math.random() * resolvedPayload.length);
+        jsonObj = resolvedPayload[index] as Record<string, string>;
+      } else if (this.isJsonObject(resolvedPayload)) {
+        jsonObj = resolvedPayload as Record<string, string>;
+      }
+      if (jsonObj === null) {
+        return null;
+      }
+      return this.convertOneText(jsonObj, feedMap);
+    } catch (e) {
+      console.error('CoreUtil', `convertApiResponse error: ${JSON.stringify(e)}`);
+      return null;
     }
   }
 
@@ -339,7 +445,9 @@ export class CoreUtil {
   /**
    * 添加订阅源
    */
-  async addFeed(feedName: string, feedType: string, feedURL?: string, feedPath?: string): Promise<void> {
+  async addFeed(feedName: string, feedType: string, feedURL?: string, feedPath?: string, textKey: string = 'text',
+    byKey: string = 'by', fromKey: string = 'from', timeKey: string = 'time', uriKey: string = 'uri',
+    objectKey: string = '', apiMethod: string = 'GET'): Promise<void> {
     const feeds = this.getAllFeeds();
     const newFeed: FeedConfig = {
       feed_name: feedName,
@@ -347,17 +455,20 @@ export class CoreUtil {
       feed_url: feedType === CoreUtil.FEED_TYPE_REMOTE ? (feedURL ?? '') : '',
       feed_path: feedPath ?? '',
       api_url: feedType === CoreUtil.FEED_TYPE_INTERNET ? (feedURL ?? '') : '',
-      text_key: 'text',
-      by_key: 'by',
-      from_key: 'from',
-      time_key: 'time',
-      uri_key: 'uri'
+      api_method: apiMethod,
+      text_key: textKey,
+      by_key: byKey,
+      from_key: fromKey,
+      time_key: timeKey,
+      uri_key: uriKey,
+      object_key: objectKey
     };
     feeds.push(newFeed);
     this.writeFeeds(feeds);
   }
 
-  async updateFeed(position: number, feedName: string, feedUrl: string): Promise<void> {
+  async updateFeed(position: number, feedName: string, feedUrl: string, textKey?: string, byKey?: string,
+    fromKey?: string, timeKey?: string, uriKey?: string, objectKey?: string, apiMethod?: string): Promise<void> {
     const feeds = this.getAllFeeds();
     if (position < 0 || position >= feeds.length) {
       return;
@@ -372,6 +483,13 @@ export class CoreUtil {
     } else {
       feed.feed_url = feedUrl;
     }
+    feed.text_key = textKey ?? feed.text_key ?? 'text';
+    feed.by_key = byKey ?? feed.by_key ?? 'by';
+    feed.from_key = fromKey ?? feed.from_key ?? 'from';
+    feed.time_key = timeKey ?? feed.time_key ?? 'time';
+    feed.uri_key = uriKey ?? feed.uri_key ?? 'uri';
+    feed.object_key = objectKey ?? feed.object_key ?? '';
+    feed.api_method = apiMethod ?? feed.api_method ?? 'GET';
     this.writeFeeds(feeds);
     await this.clearOneTextCache();
   }
@@ -440,32 +558,39 @@ export class CoreUtil {
   /**
    * 构建小组件可直接使用的数据，包含正文和样式设置
    */
-  async buildWidgetFormData(): Promise<Record<string, string> | null> {
+  async buildWidgetFormData(forceRefresh: boolean = false): Promise<Record<string, string> | null> {
     try {
       const feedCode = await this.prefs.getNumber('feed_code', 0);
       const feedMap = await this.getFeedInformation(feedCode);
-      const oneText = await this.getCurrentOneText() ?? (feedMap.feed_type === CoreUtil.FEED_TYPE_INTERNET
+      const shouldUpdate = forceRefresh || await this.ifOneTextShouldUpdate(true);
+      const oneText = shouldUpdate ? (feedMap.feed_type === CoreUtil.FEED_TYPE_INTERNET
         ? await this.getOneTextFromApi(feedMap)
-        : (await this.initOneText() ? await this.getOneText(false, true) : null));
+        : (await this.initOneText() ? await this.getOneText(true, true) : null)) :
+        (await this.getCurrentOneText() ?? (feedMap.feed_type === CoreUtil.FEED_TYPE_INTERNET
+          ? await this.getOneTextFromApi(feedMap)
+          : (await this.initOneText() ? await this.getOneText(false, true) : null)));
 
       if (!oneText) {
         return null;
       }
-      await this.saveCurrentOneText(oneText);
+      const convertedOneText = this.convertOneTextLanguage(oneText);
+      await this.saveCurrentOneText(convertedOneText);
 
       const widgetDark = await this.prefs.getBoolean('widget_dark', false);
       const widgetShadow = await this.prefs.getBoolean('widget_shadow', true);
       const widgetCenter = await this.prefs.getBoolean('widget_center', true);
+      const widgetBlurBackground = await WidgetBackgroundUtil.isBlurEnabled(this.prefs);
 
       return {
-        'text': oneText.text ?? '',
-        'by': oneText.by ?? '',
-        'from': oneText.from ?? '',
-        'time': oneText.time ?? '',
-        'uri': oneText.uri ?? '',
+        'text': convertedOneText.text ?? '',
+        'by': convertedOneText.by ?? '',
+        'from': convertedOneText.from ?? '',
+        'time': convertedOneText.time ?? '',
+        'uri': convertedOneText.uri ?? '',
         'widget_dark': String(widgetDark),
         'widget_shadow': String(widgetShadow),
-        'widget_center': String(widgetCenter)
+        'widget_center': String(widgetCenter),
+        'widget_blur_background': String(widgetBlurBackground)
       };
     } catch (e) {
       console.error('CoreUtil', `buildWidgetFormData error: ${JSON.stringify(e)}`);

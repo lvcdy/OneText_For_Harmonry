@@ -7,11 +7,11 @@
         "material": {
           "certpath": "C:\\Users\\zhz\\.ohos\\config\\default_OneText_For_Harmonry_RTz-KNbP-fxYu_3eB_oO_0vzfsrvxUPcJiYCPZROPL8=.cer",
           "keyAlias": "debugKey",
-          "keyPassword": "0000001A1E9D593E9E51DDC0658423882CE7C3B5F6DE119FA6FEACFCF1577D5DDA97B473D2E367AA7988",
+          "keyPassword": "0000001B9CA3965C9F2A74B680C9353E09846D521FA8E230F4DBFABF96EB09BE9AB5E4BC86DA8C72A43C62",
           "profile": "C:\\Users\\zhz\\.ohos\\config\\default_OneText_For_Harmonry_RTz-KNbP-fxYu_3eB_oO_0vzfsrvxUPcJiYCPZROPL8=.p7b",
           "signAlg": "SHA256withECDSA",
           "storeFile": "C:\\Users\\zhz\\.ohos\\config\\default_OneText_For_Harmonry_RTz-KNbP-fxYu_3eB_oO_0vzfsrvxUPcJiYCPZROPL8=.p12",
-          "storePassword": "0000001A53CA14655E49DD922F0892E4A63B70B8E332CBD117EF0BCE8B216DED7F8B4B070AC9BAE69C9A"
+          "storePassword": "0000001B4920669E1B9104CE67CB86DA346F05D4A4F4629A2DE91580CFB4DEF6A0FAC013F5E134D46F384A"
         }
       }
     ],

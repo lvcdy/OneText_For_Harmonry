@@ -59,6 +59,26 @@
         {
             "name": "colorCardBorder",
             "value": "#263142"
+        },
+        {
+            "name": "colorGlassCard",
+            "value": "#D9171B24"
+        },
+        {
+            "name": "colorGlassControl",
+            "value": "#CC252B36"
+        },
+        {
+            "name": "colorGlassSelected",
+            "value": "#335B8DFF"
+        },
+        {
+            "name": "colorGlassBorder",
+            "value": "#334B5568"
+        },
+        {
+            "name": "colorGlassShadow",
+            "value": "#66000000"
         }
     ]
 }

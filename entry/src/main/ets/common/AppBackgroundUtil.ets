@@ -1,11 +1,17 @@
 import { common } from '@kit.AbilityKit';
 import { fileIo, fileUri } from '@kit.CoreFileKit';
 import { PreferencesUtil } from './PreferencesUtil';
+import { UrlRefreshUtil } from './UrlRefreshUtil';
 
 export enum AppBackgroundMode {
   DEFAULT = 0,
   LOCAL_IMAGE = 1,
   IMAGE_API = 2
+}
+
+export enum WidgetBackgroundMode {
+  TRANSPARENT = 0,
+  BLUR = 3
 }
 
 export class AppBackgroundUtil {
@@ -16,6 +22,8 @@ export class AppBackgroundUtil {
   static readonly API_URI_KEY: string = 'app_background_api_uri';
   private static readonly BACKGROUND_DIR_NAME: string = 'Background';
   private static readonly LEGACY_BACKGROUND_FILE_NAME: string = 'app_background.jpg';
+  private static sessionApiSourceUri: string = '';
+  private static sessionApiRefreshUri: string = '';
 
   private static ensureBackgroundDir(context: common.Context): string {
     const backgroundDir = `${context.filesDir}/${AppBackgroundUtil.BACKGROUND_DIR_NAME}`;
@@ -39,6 +47,29 @@ export class AppBackgroundUtil {
     }
   }
 
+  private static clearApiSession(): void {
+    AppBackgroundUtil.sessionApiSourceUri = '';
+    AppBackgroundUtil.sessionApiRefreshUri = '';
+  }
+
+  private static getSessionRefreshUri(uri: string, forceRefresh: boolean = false): string {
+    const trimmedUri = uri.trim();
+    if (trimmedUri === '') {
+      AppBackgroundUtil.clearApiSession();
+      return '';
+    }
+
+    if (!forceRefresh && AppBackgroundUtil.sessionApiSourceUri === trimmedUri &&
+      AppBackgroundUtil.sessionApiRefreshUri !== '') {
+      return AppBackgroundUtil.sessionApiRefreshUri;
+    }
+
+    const refreshedUri = UrlRefreshUtil.withRefreshParam(trimmedUri);
+    AppBackgroundUtil.sessionApiSourceUri = trimmedUri;
+    AppBackgroundUtil.sessionApiRefreshUri = refreshedUri;
+    return refreshedUri;
+  }
+
   static async getMode(prefs: PreferencesUtil): Promise<AppBackgroundMode> {
     const mode = await prefs.getNumber(AppBackgroundUtil.MODE_KEY, AppBackgroundMode.DEFAULT);
     if (mode === AppBackgroundMode.LOCAL_IMAGE || mode === AppBackgroundMode.IMAGE_API) {
@@ -59,7 +90,7 @@ export class AppBackgroundUtil {
       return uri;
     }
     if (mode === AppBackgroundMode.IMAGE_API) {
-      const uri = await prefs.getString(AppBackgroundUtil.API_URI_KEY, '');
+      const uri = AppBackgroundUtil.getSessionRefreshUri(await prefs.getString(AppBackgroundUtil.API_URI_KEY, ''));
       AppBackgroundUtil.syncStorage(uri);
       return uri;
     }
@@ -69,6 +100,7 @@ export class AppBackgroundUtil {
 
   static async setDefault(prefs: PreferencesUtil): Promise<string> {
     await prefs.putNumber(AppBackgroundUtil.MODE_KEY, AppBackgroundMode.DEFAULT);
+    AppBackgroundUtil.clearApiSession();
     AppBackgroundUtil.syncStorage('');
     return '';
   }
@@ -76,8 +108,21 @@ export class AppBackgroundUtil {
   static async setApi(prefs: PreferencesUtil, apiUri: string): Promise<string> {
     await prefs.putString(AppBackgroundUtil.API_URI_KEY, apiUri);
     await prefs.putNumber(AppBackgroundUtil.MODE_KEY, AppBackgroundMode.IMAGE_API);
-    AppBackgroundUtil.syncStorage(apiUri);
-    return apiUri;
+    const refreshedUri = AppBackgroundUtil.getSessionRefreshUri(apiUri, true);
+    AppBackgroundUtil.syncStorage(refreshedUri);
+    return refreshedUri;
+  }
+
+  static async refreshApiBackground(prefs: PreferencesUtil): Promise<string> {
+    const mode = await AppBackgroundUtil.getMode(prefs);
+    if (mode !== AppBackgroundMode.IMAGE_API) {
+      return await AppBackgroundUtil.getBackgroundUri(prefs);
+    }
+
+    const refreshedUri = AppBackgroundUtil.getSessionRefreshUri(await prefs.getString(AppBackgroundUtil.API_URI_KEY, ''),
+      true);
+    AppBackgroundUtil.syncStorage(refreshedUri);
+    return refreshedUri;
   }
 
   static async saveLocalImage(context: common.Context, prefs: PreferencesUtil, sourceUri: string): Promise<string> {
@@ -97,12 +142,39 @@ export class AppBackgroundUtil {
     await prefs.putString(AppBackgroundUtil.LOCAL_PATH_KEY, targetPath);
     await prefs.putString(AppBackgroundUtil.LOCAL_URI_KEY, targetUri);
     await prefs.putNumber(AppBackgroundUtil.MODE_KEY, AppBackgroundMode.LOCAL_IMAGE);
+    AppBackgroundUtil.clearApiSession();
     AppBackgroundUtil.syncStorage(targetUri);
     return targetUri;
   }
 
   static syncStorage(uri: string): void {
     AppStorage.setOrCreate<string>(AppBackgroundUtil.STORAGE_KEY, uri);
+  }
+}
+
+export class WidgetBackgroundUtil {
+  static readonly MODE_KEY: string = 'widget_background_mode';
+
+  static async getMode(prefs: PreferencesUtil): Promise<WidgetBackgroundMode> {
+    const mode = await prefs.getNumber(WidgetBackgroundUtil.MODE_KEY, WidgetBackgroundMode.TRANSPARENT);
+    if (mode === WidgetBackgroundMode.BLUR) {
+      return WidgetBackgroundMode.BLUR;
+    }
+    return WidgetBackgroundMode.TRANSPARENT;
+  }
+
+  static async isBlurEnabled(prefs: PreferencesUtil): Promise<boolean> {
+    return await WidgetBackgroundUtil.getMode(prefs) === WidgetBackgroundMode.BLUR;
+  }
+
+  static async setDefault(prefs: PreferencesUtil): Promise<string> {
+    await prefs.putNumber(WidgetBackgroundUtil.MODE_KEY, WidgetBackgroundMode.TRANSPARENT);
+    return '';
+  }
+
+  static async setBlur(prefs: PreferencesUtil): Promise<string> {
+    await prefs.putNumber(WidgetBackgroundUtil.MODE_KEY, WidgetBackgroundMode.BLUR);
+    return '';
   }
 }
 

@@ -13,10 +13,6 @@
             "value": "Hitokoto"
         },
         {
-            "name": "widget_display_name",
-            "value": "Hitokoto 小工具"
-        },
-        {
             "name": "widget_desc",
             "value": "在桌面顯示隨機句子"
         },
@@ -45,12 +41,8 @@
             "value": "儲存失敗"
         },
         {
-            "name": "save_permission_denied",
-            "value": "需要授予圖庫權限後才能儲存圖片"
-        },
-        {
-            "name": "permission_write_imagevideo_reason",
-            "value": "允許 Hitokoto 將句子截圖儲存到圖庫。"
+            "name": "permission_detect_gesture_reason",
+            "value": "允許 Hitokoto 偵測握持姿態，用於自動調整介面佈局。"
         },
         {
             "name": "refresh_button",
@@ -103,6 +95,14 @@
         {
             "name": "widget_shadow",
             "value": "陰影"
+        },
+        {
+            "name": "widget_background_mode",
+            "value": "小工具背板"
+        },
+        {
+            "name": "widget_blur_flagship_only",
+            "value": "模糊背板目前僅在旗艦機生效"
         },
         {
             "name": "default_text",
@@ -179,6 +179,18 @@
         {
             "name": "share_text",
             "value": "分享"
+        },
+        {
+            "name": "share_button",
+            "value": "傳送"
+        },
+        {
+            "name": "share_empty",
+            "value": "暫無可分享內容"
+        },
+        {
+            "name": "share_failed",
+            "value": "分享失敗"
         },
         {
             "name": "copied",

@@ -13,10 +13,6 @@
             "value": "Hitokoto"
         },
         {
-            "name": "widget_display_name",
-            "value": "Hitokoto 小组件"
-        },
-        {
             "name": "widget_desc",
             "value": "在桌面显示随机句子"
         },
@@ -45,12 +41,8 @@
             "value": "保存失败"
         },
         {
-            "name": "save_permission_denied",
-            "value": "需要授予图库权限后才能保存图片"
-        },
-        {
-            "name": "permission_write_imagevideo_reason",
-            "value": "允许 Hitokoto 将句子截图保存到图库。"
+            "name": "permission_detect_gesture_reason",
+            "value": "允许 Hitokoto 检测握持姿态，用于自动调整界面布局。"
         },
         {
             "name": "refresh_button",
@@ -103,6 +95,14 @@
         {
             "name": "widget_shadow",
             "value": "阴影"
+        },
+        {
+            "name": "widget_background_mode",
+            "value": "小组件背板"
+        },
+        {
+            "name": "widget_blur_flagship_only",
+            "value": "模糊背板当前仅在旗舰机生效"
         },
         {
             "name": "default_text",
@@ -179,6 +179,18 @@
         {
             "name": "share_text",
             "value": "分享"
+        },
+        {
+            "name": "share_button",
+            "value": "发送"
+        },
+        {
+            "name": "share_empty",
+            "value": "暂无可分享内容"
+        },
+        {
+            "name": "share_failed",
+            "value": "分享失败"
         },
         {
             "name": "copied",

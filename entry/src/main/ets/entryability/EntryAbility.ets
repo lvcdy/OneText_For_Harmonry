@@ -4,6 +4,7 @@ import { window } from '@kit.ArkUI';
 import { PreferencesUtil } from '../common/PreferencesUtil';
 import { AppLanguageUtil } from '../common/AppLanguageUtil';
 import { AppDisplayModeUtil } from '../common/AppDisplayModeUtil';
+import { AppBackgroundUtil } from '../common/AppBackgroundUtil';
 
 const TAG = 'EntryAbility';
 const DOMAIN = 0x0000;
@@ -57,9 +58,20 @@ export default class EntryAbility extends UIAbility {
 
   onForeground(): void {
     hilog.info(DOMAIN, TAG, 'onForeground');
+    this.refreshAppBackground();
   }
 
   onBackground(): void {
     hilog.info(DOMAIN, TAG, 'onBackground');
+  }
+
+  private async refreshAppBackground(): Promise<void> {
+    try {
+      const prefs = PreferencesUtil.getInstance();
+      await prefs.init(this.context);
+      await AppBackgroundUtil.refreshApiBackground(prefs);
+    } catch (e) {
+      hilog.warn(DOMAIN, TAG, `refreshAppBackground skipped: ${JSON.stringify(e)}`);
+    }
   }
 }

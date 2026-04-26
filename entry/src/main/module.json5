@@ -52,11 +52,8 @@
         "name": "ohos.permission.INTERNET"
       },
       {
-        "name": "ohos.permission.DETECT_GESTURE"
-      },
-      {
-        "name": "ohos.permission.WRITE_IMAGEVIDEO",
-        "reason": "$string:permission_write_imagevideo_reason",
+        "name": "ohos.permission.DETECT_GESTURE",
+        "reason": "$string:permission_detect_gesture_reason",
         "usedScene": {
           "abilities": [
             "EntryAbility"

@@ -20,7 +20,7 @@ export default class EntryFormAbility extends FormExtensionAbility {
     const formId = want.parameters?.['ohos.extra.param.key.form_identity'] as string;
     if (formId) {
       this.saveFormId(formId);
-      this.updateWidgetData(formId);
+      this.updateWidgetData(formId, true);
     }
 
     return formBindingData.createFormBindingData(FormUtil.DEFAULT_FORM_DATA);
@@ -37,8 +37,8 @@ export default class EntryFormAbility extends FormExtensionAbility {
 
   onFormEvent(formId: string, message: string): void {
     hilog.info(DOMAIN, TAG, `onFormEvent, formId: ${formId}, message: ${message}`);
-    if (message === 'refresh') {
-      this.updateWidgetData(formId);
+    if (this.isRefreshMessage(message)) {
+      this.updateWidgetData(formId, true);
     }
   }
 
@@ -73,12 +73,24 @@ export default class EntryFormAbility extends FormExtensionAbility {
     }
   }
 
-  private async updateWidgetData(formId: string): Promise<void> {
+  private isRefreshMessage(message: string): boolean {
+    if (message === 'refresh') {
+      return true;
+    }
+    try {
+      const params = JSON.parse(message) as Record<string, string>;
+      return params.message === 'refresh';
+    } catch (e) {
+      return false;
+    }
+  }
+
+  private async updateWidgetData(formId: string, forceRefresh: boolean = false): Promise<void> {
     try {
       await PreferencesUtil.getInstance().init(this.context);
       const coreUtil = new CoreUtil(this.context);
       await coreUtil.initFeedFile();
-      const formData = await coreUtil.buildWidgetFormData();
+      const formData = await coreUtil.buildWidgetFormData(forceRefresh);
       if (formData) {
         await FormUtil.updateForm(formId, formData);
       }

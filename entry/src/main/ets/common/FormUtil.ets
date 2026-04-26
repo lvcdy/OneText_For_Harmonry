@@ -9,9 +9,13 @@ export class FormUtil {
   static readonly DEFAULT_FORM_DATA: Record<string, string> = {
     'text': '生活不止眼前的苟且，还有诗和远方。',
     'by': '高晓松',
+    'from': '',
+    'time': '',
+    'uri': '',
     'widget_dark': 'false',
     'widget_shadow': 'true',
-    'widget_center': 'true'
+    'widget_center': 'true',
+    'widget_blur_background': 'false'
   };
 
   private static parseFormIds(idsStr: string): string[] {

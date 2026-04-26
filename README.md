@@ -66,9 +66,8 @@ hvigorw clean --mode module -p product=default -p buildMode=release assembleHap
 
 - `ohos.permission.INTERNET`
 - `ohos.permission.DETECT_GESTURE`
-- `ohos.permission.WRITE_IMAGEVIDEO`
 
-`WRITE_IMAGEVIDEO` 用于将首页截图保存到相册。`DETECT_GESTURE` 用于左右手握持检测，以动态调整界面布局。
+保存图片通过系统 `SaveButton` 临时授权后写入图库，不再声明图库写入权限。`DETECT_GESTURE` 用于左右手握持检测，以动态调整界面布局。
 
 ## 发布注意
 
