@@ -35,8 +35,15 @@ export class OneTextMetaUtil {
     return parts.join(' · ');
   }
 
+  static replaceTextHolder(text: string, textHolder: string, textReplacement: string): string {
+    if (textHolder === '') {
+      return text;
+    }
+    return text.split(textHolder).join(textReplacement);
+  }
+
   static buildShareText(oneText: OneTextItem, textHolder: string, textReplacement: string): string {
-    const lines: string[] = [oneText.text.replace(textHolder, textReplacement)];
+    const lines: string[] = [OneTextMetaUtil.replaceTextHolder(oneText.text, textHolder, textReplacement)];
     if (oneText.by !== '') {
       lines.push(`-- ${oneText.by}`);
     }

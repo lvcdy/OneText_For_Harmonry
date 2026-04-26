@@ -3,6 +3,7 @@
 .appanalyzer/
 oh_modules/
 oh-package-lock.json5
+build-profile.json5
 build/
 */build/
 entry/.preview/

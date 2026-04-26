@@ -396,6 +396,10 @@ struct Index {
     return OneTextMetaUtil.buildShareText(this.oneText, CoreUtil.TEXT_REPLACE_HOLDER, CoreUtil.TEXT_REPLACE);
   }
 
+  private getDisplayText(text: string): string {
+    return OneTextMetaUtil.replaceTextHolder(text, CoreUtil.TEXT_REPLACE_HOLDER, CoreUtil.TEXT_REPLACE);
+  }
+
   private setTextFontSize(value: number): void {
     this.textFontSize = value;
     this.prefs.putNumber('onetext_text_size', value);
@@ -627,7 +631,7 @@ struct Index {
       Column() {
         Blank()
 
-        Text(this.oneText.text.replace(CoreUtil.TEXT_REPLACE_HOLDER, CoreUtil.TEXT_REPLACE))
+        Text(this.getDisplayText(this.oneText.text))
           .fontSize(this.textFontSize)
           .fontFamily(this.getCurrentFontFamily())
           .fontWeight(FontWeight.Medium)
@@ -733,7 +737,7 @@ struct Index {
         Blank()
 
         if (this.oneText.text !== '') {
-          Text(this.oneText.text.replace(CoreUtil.TEXT_REPLACE_HOLDER, CoreUtil.TEXT_REPLACE))
+          Text(this.getDisplayText(this.oneText.text))
             .fontSize(this.textFontSize)
             .fontFamily(this.getCurrentFontFamily())
             .fontWeight(FontWeight.Medium)
@@ -744,7 +748,7 @@ struct Index {
             .maxLines(this.isWideLayout() ? 6 : 4)
             .textOverflow({ overflow: TextOverflow.Ellipsis })
             .onClick(() => {
-              this.copyToClipboard(this.oneText.text);
+              this.copyToClipboard(this.getDisplayText(this.oneText.text));
             })
         }
 
