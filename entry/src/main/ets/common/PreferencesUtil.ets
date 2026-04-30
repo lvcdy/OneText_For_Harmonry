@@ -50,7 +50,13 @@ export class PreferencesUtil {
   async getBoolean(key: string, defaultValue: boolean = false): Promise<boolean> {
     if (!this.prefs) return defaultValue;
     const value = await this.prefs.get(key, defaultValue);
-    return value as boolean;
+    if (typeof value === 'boolean') {
+      return value;
+    }
+    if (typeof value === 'string') {
+      return value === 'true';
+    }
+    return defaultValue;
   }
 
   async putBoolean(key: string, value: boolean): Promise<void> {

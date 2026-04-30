@@ -3,7 +3,7 @@
         "feed_name": "Hitokoto",
         "feed_type": "internet",
         "api_method": "GET",
-        "api_url": "https://v1.hitokoto.cn",
+        "api_url": "",
         "text_key": "hitokoto",
         "by_key": "from_who",
         "from_key": "from"

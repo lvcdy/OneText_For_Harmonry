@@ -7,8 +7,8 @@ export class FormUtil {
   static readonly PREF_NAME: string = 'form_ids';
   static readonly FORM_ID_LIST_KEY: string = 'form_id_list';
   static readonly DEFAULT_FORM_DATA: Record<string, string> = {
-    'text': '生活不止眼前的苟且，还有诗和远方。',
-    'by': '高晓松',
+    'text': CoreUtil.API_MISSING_TEXT,
+    'by': '',
     'from': '',
     'time': '',
     'uri': '',

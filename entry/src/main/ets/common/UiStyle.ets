@@ -18,8 +18,8 @@ export class UiStyle {
   static readonly TAG_GREEN: string = '#4CAF50';
 
   static readonly PAGE_SIDE: number = 20;
-  // Top inset used after enabling full-screen immersive layout.
-  static readonly PAGE_TOP: number = 44;
+  // Content inset used while the window background extends behind the status bar.
+  static readonly FULLSCREEN_TOP_INSET: number = 44;
   static readonly CARD_RADIUS: number = 30;
   static readonly DIALOG_RADIUS: number = 24;
   static readonly CHIP_RADIUS: number = 18;

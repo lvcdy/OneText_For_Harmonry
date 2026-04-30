@@ -35,11 +35,11 @@ const HOME_CONTENT_TOP_SPACE: number = 16;
 const MINE_ACCOUNT_HEADER_HEIGHT: number = 198;
 const MINE_ACCOUNT_HEADER_OFFSET_Y: number = 0;
 const MINE_PAGE_SIDE: number = 0;
-const MINE_PAGE_TOP: number = 0;
+const MINE_SAFE_AREA_TOP_GAP: number = 0;
 const MINE_PANE_MAX_WIDTH_COMPACT: number = 440;
 const MINE_PANE_MAX_WIDTH_WIDE: number = 560;
 const MINE_PANE_MIN_HEIGHT: number = 686;
-const MINE_PANE_OFFSET_Y: number = -60;
+const MINE_PANE_OFFSET_Y: number = 0;
 const MINE_FONT_CARD_TOP: number = 42;
 const MINE_FONT_CARD_OFFSET_Y: number = 0;
 const MINE_SETTINGS_CARD_TOP: number = 14;
@@ -77,10 +77,16 @@ struct Index {
   @State huaweiAccountName: string = '使用华为账号登录';
   @State huaweiAccountAvatar: string = '';
   @State hasHuaweiAccount: boolean = false;
-  @State adaptiveGripEnabled: boolean = true;
+  @StorageLink('adaptiveGripEnabled')
+  @Watch('onAdaptiveGripChanged')
+  adaptiveGripEnabled: boolean = true;
   @State pageWidth: number = 0;
   @State showFontSizeControls: boolean = false;
+  @State apiConfigMissing: boolean = false;
   @StorageLink('appBackgroundUri') appBackgroundUri: string = '';
+  @StorageLink('feedConfigUpdatedAt')
+  @Watch('onFeedConfigUpdated')
+  feedConfigUpdatedAt: number = 0;
   @Provide('navPathStack') navPathStack: NavPathStack = new NavPathStack();
 
   private context: common.UIAbilityContext = getContext(this) as common.UIAbilityContext;
@@ -142,6 +148,7 @@ struct Index {
       this.fontStyleIndex = Math.min(await this.prefs.getNumber('onetext_font_style', 0), this.fontStyles.length - 1);
       this.sealVisible = await this.prefs.getBoolean('seal_enabled', false);
       this.adaptiveGripEnabled = await this.prefs.getBoolean('adaptive_grip_enabled', true);
+      AppStorage.setOrCreate<boolean>('adaptiveGripEnabled', this.adaptiveGripEnabled);
       this.appBackgroundUri = await AppBackgroundUtil.getBackgroundUri(this.prefs);
       if (!this.adaptiveGripEnabled) {
         this.applyGripSide(false);
@@ -151,15 +158,17 @@ struct Index {
       // 初始化订阅源
       await this.coreUtil.initFeedFile();
 
-      // 加载 Hitokoto
-      await this.loadOneText(false);
-
       if (!this.hasShownWelcome) {
         const firstRun = await this.prefs.getBoolean('first_run', true);
         if (firstRun) {
           this.hasShownWelcome = true;
+          this.isLoading = false;
           this.navPathStack.pushPathByName('WelcomePage', null);
+        } else {
+          await this.loadOneText(false);
         }
+      } else {
+        await this.loadOneText(false);
       }
 
       if (this.adaptiveGripEnabled) {
@@ -213,6 +222,26 @@ struct Index {
     animateTo({ duration: 260, curve: Curve.EaseOut }, () => {
       this.isLeftHandHeld = leftHandHeld;
     });
+  }
+
+  private onFeedConfigUpdated(): void {
+    if (this.feedConfigUpdatedAt <= 0) {
+      return;
+    }
+    this.loadOneText(false).catch((e: Error) => {
+      console.error('Index', `reload one text error: ${JSON.stringify(e)}`);
+    });
+  }
+
+  private onAdaptiveGripChanged(): void {
+    if (this.adaptiveGripEnabled) {
+      this.startGripAwareness().catch((e: Error) => {
+        console.error('Index', `start grip awareness error: ${JSON.stringify(e)}`);
+      });
+      return;
+    }
+    this.stopGripAwareness();
+    this.applyGripSide(false);
   }
 
   private async refreshByPull(): Promise<void> {
@@ -338,11 +367,22 @@ struct Index {
    */
   private async loadOneText(forceRefresh: boolean): Promise<void> {
     this.isLoading = true;
+    this.apiConfigMissing = false;
     try {
       const feedCode = await this.prefs.getNumber('feed_code', 0);
       const feedMap = await this.coreUtil.getFeedInformation(feedCode);
 
       if (feedMap.feed_type === CoreUtil.FEED_TYPE_INTERNET) {
+        const apiUrl = (feedMap.api_url ?? feedMap.feed_url ?? '').trim();
+        if (apiUrl === '') {
+          this.oneText = this.createApiMissingOneText();
+          this.apiConfigMissing = true;
+          await this.prefs.remove('api_string');
+          await this.coreUtil.saveCurrentOneText(this.oneText);
+          await this.refreshWidgetForms();
+          return;
+        }
+
         // API 类型订阅源
         const apiString = await this.prefs.getString('api_string', '');
         const shouldUpdate = await this.coreUtil.ifOneTextShouldUpdate(false);
@@ -372,6 +412,30 @@ struct Index {
     } finally {
       this.isLoading = false;
     }
+  }
+
+  private createEmptyOneText(): OneTextItem {
+    return {
+      text: '',
+      by: '',
+      from: '',
+      time: '',
+      uri: '',
+      quote1: '\u201C',
+      quote2: '\u201D'
+    };
+  }
+
+  private createApiMissingOneText(): OneTextItem {
+    return {
+      text: CoreUtil.API_MISSING_TEXT,
+      by: '',
+      from: '',
+      time: '',
+      uri: '',
+      quote1: '\u201C',
+      quote2: '\u201D'
+    };
   }
 
   private async refreshWidgetForms(): Promise<void> {
@@ -736,7 +800,16 @@ struct Index {
       Column() {
         Blank()
 
-        if (this.oneText.text !== '') {
+        if (this.apiConfigMissing) {
+          Text(CoreUtil.API_MISSING_TEXT)
+            .fontSize(this.isWideLayout() ? 24 : 21)
+            .fontFamily(this.getCurrentFontFamily())
+            .fontWeight(FontWeight.Medium)
+            .fontColor($r('app.color.colorText1'))
+            .width('100%')
+            .textAlign(TextAlign.Center)
+            .lineHeight(32)
+        } else if (this.oneText.text !== '') {
           Text(this.getDisplayText(this.oneText.text))
             .fontSize(this.textFontSize)
             .fontFamily(this.getCurrentFontFamily())
@@ -828,12 +901,12 @@ struct Index {
     Column() {
       this.SaveActionRow()
 
-      this.ActionRow($r('app.string.share_text'), $r('app.string.share_button'), () => {
-        this.shareCurrentText();
+      this.ActionRow($r('app.string.share_text'), $r('app.string.share_button'), async () => {
+        await this.shareCurrentText();
       })
 
-      this.ActionRow($r('app.string.refresh_onetext_text'), $r('app.string.refresh_button'), () => {
-        this.refreshByPull();
+      this.ActionRow($r('app.string.refresh_onetext_text'), $r('app.string.refresh_button'), async () => {
+        await this.refreshByPull();
       })
 
       this.ActionRow($r('app.string.seal_text'), this.sealVisible ? $r('app.string.seal_button_ison') : $r('app.string.seal_button_isoff'), async () => {
@@ -898,8 +971,8 @@ struct Index {
         .alignItems(VerticalAlign.Center)
 
         Row() {
-          this.HeaderIconButton($r('app.media.ic_heart'), $r('app.color.colorPrimary'), () => {
-            this.openExternalLink(DONATE_URL);
+          this.HeaderIconButton($r('app.media.ic_heart'), $r('app.color.colorPrimary'), async () => {
+            await this.openExternalLink(DONATE_URL);
           })
           this.HeaderIconButton($r('app.media.ic_settings'), $r('app.color.colorText2'), () => {
             this.navPathStack.pushPathByName('SettingsPage', null);
@@ -914,11 +987,11 @@ struct Index {
     }
     .width('100%')
     .height(UiStyle.HEADER_HEIGHT)
-    .padding({ left: UiStyle.PAGE_SIDE, right: UiStyle.PAGE_SIDE, top: UiStyle.PAGE_TOP })
+    .padding({ left: UiStyle.PAGE_SIDE, right: UiStyle.PAGE_SIDE, top: UiStyle.FULLSCREEN_TOP_INSET })
   }
 
   @Builder
-  HeaderIconButton(icon: ResourceStr, iconColor: ResourceColor, onClick: () => void) {
+  HeaderIconButton(icon: ResourceStr, iconColor: ResourceColor, onClick: () => void | Promise<void>) {
     Stack() {
       Image(icon)
         .width(25)
@@ -935,7 +1008,9 @@ struct Index {
     .shadow({ radius: 12, color: this.getGlassShadowColor(), offsetX: 0, offsetY: 4 })
     .margin({ left: 12 })
     .onClick(() => {
-      onClick();
+      Promise.resolve(onClick()).catch((e: Error) => {
+        console.error('Index', `header action error: ${JSON.stringify(e)}`);
+      });
     })
   }
 
@@ -950,19 +1025,22 @@ struct Index {
         }
         .width('100%')
         .constraintSize({ maxWidth: this.getMinePaneMaxWidth(), minHeight: MINE_PANE_MIN_HEIGHT })
-        .padding({ left: MINE_PAGE_SIDE, right: MINE_PAGE_SIDE, top: MINE_PAGE_TOP, bottom: UiStyle.FLOAT_TAB_BOTTOM_SPACE })
+        .padding({
+          left: MINE_PAGE_SIDE,
+          right: MINE_PAGE_SIDE,
+          top: MINE_SAFE_AREA_TOP_GAP,
+          bottom: UiStyle.FLOAT_TAB_BOTTOM_SPACE
+        })
         .alignItems(HorizontalAlign.Center)
         .translate({ y: MINE_PANE_OFFSET_Y })
       }
       .width('100%')
       .height('100%')
-      .expandSafeArea([SafeAreaType.SYSTEM], [SafeAreaEdge.TOP, SafeAreaEdge.START, SafeAreaEdge.END])
       .scrollBar(BarState.Off)
       .edgeEffect(EdgeEffect.Spring)
     }
     .width('100%')
     .height('100%')
-    .expandSafeArea([SafeAreaType.SYSTEM], [SafeAreaEdge.TOP, SafeAreaEdge.START, SafeAreaEdge.END])
   }
 
   @Builder
@@ -1219,7 +1297,9 @@ struct Index {
           .height(44)
           .onClick((event: ClickEvent, result: SaveButtonOnClickResult) => {
             if (result === SaveButtonOnClickResult.SUCCESS) {
-              this.saveScreenshot();
+              this.saveScreenshot().catch((e: Error) => {
+                console.error('Index', `save screenshot error: ${JSON.stringify(e)}`);
+              });
               return;
             }
             if (result === SaveButtonOnClickResult.TEMPORARY_AUTHORIZATION_FAILED) {
@@ -1243,7 +1323,7 @@ struct Index {
   }
 
   @Builder
-  ActionRow(label: ResourceStr, buttonText: ResourceStr, onClick: () => void) {
+  ActionRow(label: ResourceStr, buttonText: ResourceStr, onClick: () => void | Promise<void>) {
     Flex({
       direction: this.isLeftHandHeld ? FlexDirection.Row : FlexDirection.RowReverse,
       alignItems: ItemAlign.Center
@@ -1267,7 +1347,7 @@ struct Index {
   }
 
   @Builder
-  ActionButton(buttonText: ResourceStr, onClick: () => void) {
+  ActionButton(buttonText: ResourceStr, onClick: () => void | Promise<void>) {
     Button(buttonText)
       .type(ButtonType.Normal)
       .borderRadius(21)
@@ -1277,7 +1357,9 @@ struct Index {
       .width(96)
       .height(44)
       .onClick(() => {
-        onClick();
+        Promise.resolve(onClick()).catch((e: Error) => {
+          console.error('Index', `action button error: ${JSON.stringify(e)}`);
+        });
       })
   }
 

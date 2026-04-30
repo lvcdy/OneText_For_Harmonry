@@ -7,13 +7,12 @@
 import { OneTextMetaUtil } from '../../common/OneTextMetaUtil';
 
 const localStorage = new LocalStorage();
-const TRANSPARENT_OPAQUE_ANCHOR_HEIGHT: string = '0%';
 
 @Entry(localStorage)
 @Component
 struct WidgetCard {
-  @LocalStorageProp('text') text: string = '生活不止眼前的苟且，还有诗和远方。';
-  @LocalStorageProp('by') by: string = '高晓松';
+  @LocalStorageProp('text') text: string = '把一句话留在今天';
+  @LocalStorageProp('by') by: string = '';
   @LocalStorageProp('from') from: string = '';
   @LocalStorageProp('time') time: string = '';
   @LocalStorageProp('widget_dark') widgetDark: string = 'false';
@@ -22,7 +21,7 @@ struct WidgetCard {
   @LocalStorageProp('widget_blur_background') widgetBlurBackground: string = 'false';
 
   private isEnabled(value: string): boolean {
-    return value === 'true';
+    return String(value) === 'true';
   }
 
   private hasBlurBackground(): boolean {
@@ -37,14 +36,6 @@ struct WidgetCard {
     return this.isEnabled(this.widgetDark) ? '#434343' : '#FFFFFF';
   }
 
-  private getOpaqueAnchorColor(): string {
-    return '#00000000';
-  }
-
-  private getOpaqueAnchorHeight(): string {
-    return TRANSPARENT_OPAQUE_ANCHOR_HEIGHT;
-  }
-
   private getFrostedGlassTintColor(): string {
     return this.isEnabled(this.widgetDark) ? '#22FFFFFF' : '#16000000';
   }
@@ -57,11 +48,12 @@ struct WidgetCard {
     return OneTextMetaUtil.buildMetaText(this.by, this.from, this.time);
   }
 
-  private refreshForm(): void {
+  private openApp(): void {
     postCardAction(this, {
-      action: 'message',
+      action: 'router',
+      abilityName: 'EntryAbility',
       params: {
-        message: 'refresh'
+        source: 'widget'
       }
     });
   }
@@ -135,15 +127,10 @@ struct WidgetCard {
         .layoutWeight(1)
         .justifyContent(FlexAlign.Center)
         .alignItems(HorizontalAlign.Center)
-
-        Row()
-          .width('100%')
-          .height(this.getOpaqueAnchorHeight())
-          .backgroundColor(this.getOpaqueAnchorColor())
       }
       .width('100%')
       .height('100%')
-      .justifyContent(FlexAlign.SpaceBetween)
+      .justifyContent(FlexAlign.Center)
       .alignItems(HorizontalAlign.Center)
     }
     .width('100%')
@@ -151,7 +138,7 @@ struct WidgetCard {
     .padding(0)
     .backgroundColor(Color.Transparent)
     .onClick(() => {
-      this.refreshForm();
+      this.openApp();
     })
   }
 }

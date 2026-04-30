@@ -26,6 +26,7 @@ const SETTINGS_CARD_WIDTH_COMPACT: string = '100%';
 const SETTINGS_CARD_WIDTH_WIDE: string = '50%';
 const WIDGET_BACKGROUND_TRANSPARENT_INDEX: number = 0;
 const WIDGET_BACKGROUND_BLUR_INDEX: number = 1;
+const FEED_CONFIG_UPDATED_AT_KEY: string = 'feedConfigUpdatedAt';
 
 /**
  * 设置页面 - 替代 Android SettingActivity
@@ -43,7 +44,7 @@ export struct SettingsPageContent {
   @State widgetRefreshTime: number = 30;
   @State feedList: FeedItem[] = [];
   @State selectedFeedIndex: number = 0;
-  @State adaptiveGripEnabled: boolean = true;
+  @StorageLink('adaptiveGripEnabled') adaptiveGripEnabled: boolean = true;
   @State isLeftHandHeld: boolean = false;
   @State pageWidth: number = 0;
   @State backgroundModeIndex: number = AppBackgroundMode.DEFAULT;
@@ -51,6 +52,9 @@ export struct SettingsPageContent {
   @State widgetBackgroundModeIndex: number = WIDGET_BACKGROUND_TRANSPARENT_INDEX;
   @Consume('navPathStack') navPathStack: NavPathStack;
   @StorageLink('appBackgroundUri') appBackgroundUri: string = '';
+  @StorageLink('feedConfigUpdatedAt')
+  @Watch('onFeedConfigUpdated')
+  feedConfigUpdatedAt: number = 0;
 
   private context: common.UIAbilityContext = getContext(this) as common.UIAbilityContext;
   private prefs: PreferencesUtil = PreferencesUtil.getInstance();
@@ -120,6 +124,7 @@ export struct SettingsPageContent {
     }
     this.selectedFeedIndex = await this.prefs.getNumber('feed_code', 0);
     this.adaptiveGripEnabled = await this.prefs.getBoolean('adaptive_grip_enabled', true);
+    AppStorage.setOrCreate<boolean>('adaptiveGripEnabled', this.adaptiveGripEnabled);
     await this.loadBackgroundSettings();
     await this.loadWidgetBackgroundSettings();
     await this.loadFeedList();
@@ -178,7 +183,17 @@ export struct SettingsPageContent {
       name: feed.feed_name,
       selected: index === this.selectedFeedIndex,
       index: index
-    } as FeedItem));
+    } as FeedItem)).filter((item: FeedItem) => this.hasFeedAddress(feeds[item.index]));
+  }
+
+  private hasFeedAddress(feed: FeedConfig): boolean {
+    if (feed.feed_type === CoreUtil.FEED_TYPE_INTERNET) {
+      return (feed.api_url ?? feed.feed_url ?? '').trim() !== '';
+    }
+    if (feed.feed_type === CoreUtil.FEED_TYPE_LOCAL) {
+      return (feed.feed_path ?? '').trim() !== '';
+    }
+    return (feed.feed_url ?? '').trim() !== '';
   }
 
   private async loadBackgroundSettings(): Promise<void> {
@@ -196,6 +211,15 @@ export struct SettingsPageContent {
   private async reloadFeedMenu(): Promise<void> {
     this.selectedFeedIndex = await this.prefs.getNumber('feed_code', 0);
     await this.loadFeedList();
+  }
+
+  private onFeedConfigUpdated(): void {
+    if (this.feedConfigUpdatedAt <= 0) {
+      return;
+    }
+    this.reloadFeedMenu().catch((e: Error) => {
+      console.error('SettingsPage', `reload feed menu error: ${JSON.stringify(e)}`);
+    });
   }
 
   private async loadLanguageType(): Promise<number> {
@@ -305,6 +329,7 @@ export struct SettingsPageContent {
     });
     await this.prefs.putNumber('feed_code', index);
     await this.coreUtil.clearOneTextCache();
+    AppStorage.setOrCreate<number>(FEED_CONFIG_UPDATED_AT_KEY, Date.now());
     animateTo({ duration: 220, curve: Curve.EaseOut }, () => {
       this.feedList = this.feedList.map((item: FeedItem) => ({
         name: item.name,
@@ -381,7 +406,9 @@ export struct SettingsPageContent {
     .hideTitleBar(true)
     .backgroundColor(UiStyle.TRANSPARENT)
     .onShown(() => {
-      this.reloadFeedMenu();
+      this.reloadFeedMenu().catch((e: Error) => {
+        console.error('SettingsPage', `reload feed menu error: ${JSON.stringify(e)}`);
+      });
     })
     .onAreaChange((oldValue: Area, newValue: Area) => {
       this.pageWidth = Number.parseFloat(String(newValue.width));
@@ -417,7 +444,7 @@ export struct SettingsPageContent {
     }
     .width('100%')
     .height(UiStyle.HEADER_HEIGHT)
-    .padding({ top: UiStyle.PAGE_TOP })
+    .padding({ top: UiStyle.FULLSCREEN_TOP_INSET })
   }
 
   @Builder
@@ -441,11 +468,13 @@ export struct SettingsPageContent {
       this.SettingSwitch($r('app.string.adaptive_grip'), this.adaptiveGripEnabled, async (value: boolean) => {
         this.adaptiveGripEnabled = value;
         await this.prefs.putBoolean('adaptive_grip_enabled', value);
+        AppStorage.setOrCreate<boolean>('adaptiveGripEnabled', value);
         if (value) {
           const started = await this.startGripAwareness();
           if (!started) {
             this.adaptiveGripEnabled = false;
             await this.prefs.putBoolean('adaptive_grip_enabled', false);
+            AppStorage.setOrCreate<boolean>('adaptiveGripEnabled', false);
           }
         } else {
           this.stopGripAwareness();
@@ -479,9 +508,13 @@ export struct SettingsPageContent {
 
       this.SettingDivider()
 
-      ForEach(this.feedList, (item: FeedItem) => {
-        this.FeedRow(item)
-      }, (item: FeedItem) => `${item.index}-${item.name}`)
+      if (this.feedList.length === 0) {
+        this.AddFeedRow()
+      } else {
+        ForEach(this.feedList, (item: FeedItem) => {
+          this.FeedRow(item)
+        }, (item: FeedItem) => `${item.index}-${item.name}`)
+      }
 
       this.SettingDivider()
       this.SettingSwitch($r('app.string.feed_auto_update'), this.feedAutoUpdate, async (value: boolean) => {
@@ -617,6 +650,30 @@ export struct SettingsPageContent {
   }
 
   @Builder
+  AddFeedRow() {
+    Row() {
+      Text('添加订阅源')
+        .fontSize(15)
+        .fontColor($r('app.color.colorPrimary'))
+        .layoutWeight(1)
+
+      Image($r('app.media.ic_add'))
+        .width(18)
+        .height(18)
+        .opacity(0.72)
+    }
+    .width('100%')
+    .height(48)
+    .padding({ left: 18, right: 18 })
+    .margin({ left: 10, right: 10, top: 2, bottom: 2 })
+    .borderRadius(18)
+    .backgroundColor(this.getGlassSelectedColor())
+    .onClick(() => {
+      this.navPathStack.pushPathByName('EditFeedPage', null);
+    })
+  }
+
+  @Builder
   FeedRow(item: FeedItem) {
     Row() {
       if (this.isLeftHandHeld) {
@@ -653,8 +710,8 @@ export struct SettingsPageContent {
         .trackColor($r('app.color.colorMD2BG'))
         .selectedColor($r('app.color.colorPrimary'))
         .onChange((nextValue: number) => {
-          animateTo({ duration: 120, curve: Curve.EaseOut }, () => {
-            onChange(nextValue);
+          onChange(nextValue).catch((e: Error) => {
+            console.error('SettingsPage', `slider change error: ${JSON.stringify(e)}`);
           });
         })
       Text(`${Math.round(value)} ${unit}`)
@@ -874,7 +931,7 @@ export struct SettingsPageContent {
   }
 
   @Builder
-  SettingSwitch(label: Resource, isOn: boolean, onChange: (value: boolean) => void) {
+  SettingSwitch(label: Resource, isOn: boolean, onChange: (value: boolean) => Promise<void>) {
     Row() {
       if (this.isLeftHandHeld) {
         this.SwitchControl(isOn, onChange)
@@ -893,12 +950,12 @@ export struct SettingsPageContent {
   }
 
   @Builder
-  SwitchControl(isOn: boolean, onChange: (value: boolean) => void) {
+  SwitchControl(isOn: boolean, onChange: (value: boolean) => Promise<void>) {
     Toggle({ type: ToggleType.Switch, isOn: isOn })
       .selectedColor($r('app.color.colorPrimary'))
       .onChange((isOn: boolean) => {
-        animateTo({ duration: 180, curve: Curve.EaseOut }, () => {
-          onChange(isOn);
+        onChange(isOn).catch((e: Error) => {
+          console.error('SettingsPage', `switch change error: ${JSON.stringify(e)}`);
         });
       })
   }

@@ -97,7 +97,7 @@ export struct AboutPageContent {
         }
         .width('100%')
         .height('100%')
-        .padding({ top: UiStyle.PAGE_TOP })
+        .padding({ top: UiStyle.FULLSCREEN_TOP_INSET })
       }
       .width('100%')
       .height('100%')
@@ -152,7 +152,7 @@ export struct AboutPageContent {
 
         this.LinkItem('项目主页', 'https://github.com/lvcdy/OneText_For_Harmonry')
         this.LinkItem('使用API地址', 'https://v1.hitokoto.cn')
-        this.LinkItem('隐私政策', 'https://agreement-drcn.hispace.dbankcloud.cn/index.html?lang=zh&agreementId=1936386579987723392')
+        this.LinkItem('隐私政策', 'https://agreement-drcn.hispace.dbankcloud.cn/index.html?lang=zh&agreementId=1937206089888053568')
       }
       .width('100%')
       .padding(20)

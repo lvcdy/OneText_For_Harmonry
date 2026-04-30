@@ -8,6 +8,7 @@ import { FeedConfig } from '../model/DataModels';
 const EDIT_FEED_RESPONSIVE_WIDE_WIDTH: number = 720;
 const EDIT_FEED_CONTENT_MAX_WIDTH_COMPACT: number = 560;
 const EDIT_FEED_CONTENT_MAX_WIDTH_WIDE: number = 760;
+const FEED_CONFIG_UPDATED_AT_KEY: string = 'feedConfigUpdatedAt';
 
 /**
  * 编辑订阅源页面 - 替代 Android EditFeedActivity
@@ -41,6 +42,7 @@ export struct EditFeedPageContent {
   @State editUriKey: string = 'uri';
   @State editObjectKey: string = '';
   @State pageWidth: number = 0;
+  @State feedIndexes: number[] = [];
   @Consume('navPathStack') navPathStack: NavPathStack;
 
   private context: common.UIAbilityContext = getContext(this) as common.UIAbilityContext;
@@ -64,6 +66,10 @@ export struct EditFeedPageContent {
     return $r('app.color.colorGlassBorder');
   }
 
+  private getGlassControlColor(): ResourceColor {
+    return $r('app.color.colorGlassControl');
+  }
+
   private getGlassShadowColor(): ResourceColor {
     return $r('app.color.colorGlassShadow');
   }
@@ -73,14 +79,38 @@ export struct EditFeedPageContent {
   }
 
   private loadFeeds(): void {
-    this.feeds = this.coreUtil.getAllFeeds();
+    const allFeeds = this.coreUtil.getAllFeeds();
+    const visibleFeeds: FeedConfig[] = [];
+    const visibleIndexes: number[] = [];
+    allFeeds.forEach((feed: FeedConfig, index: number) => {
+      if (this.hasFeedAddress(feed)) {
+        visibleFeeds.push(feed);
+        visibleIndexes.push(index);
+      }
+    });
+    this.feeds = visibleFeeds;
+    this.feedIndexes = visibleIndexes;
+  }
+
+  private hasFeedAddress(feed: FeedConfig): boolean {
+    if (feed.feed_type === CoreUtil.FEED_TYPE_INTERNET) {
+      return (feed.api_url ?? feed.feed_url ?? '').trim() !== '';
+    }
+    if (feed.feed_type === CoreUtil.FEED_TYPE_LOCAL) {
+      return (feed.feed_path ?? '').trim() !== '';
+    }
+    return (feed.feed_url ?? '').trim() !== '';
+  }
+
+  private notifyFeedConfigUpdated(): void {
+    AppStorage.setOrCreate<number>(FEED_CONFIG_UPDATED_AT_KEY, Date.now());
   }
 
   private async deleteFeed(index: number): Promise<void> {
-    if (this.feeds.length <= 1) {
-      promptAction.showToast({ message: '至少保留一个订阅源' });
+    if (index < 0 || index >= this.feeds.length) {
       return;
     }
+    const sourceIndex = this.feedIndexes[index] ?? index;
     AlertDialog.show({
       title: '删除订阅源',
       message: `确定要删除 "${this.feeds[index].feed_name}" 吗？`,
@@ -93,7 +123,8 @@ export struct EditFeedPageContent {
         value: '删除',
         fontColor: Color.Red,
         action: async () => {
-          await this.coreUtil.deleteFeed(index);
+          await this.coreUtil.deleteFeed(sourceIndex);
+          this.notifyFeedConfigUpdated();
           this.loadFeeds();
           promptAction.showToast({ message: $r('app.string.delete_succeed') });
         }
@@ -118,6 +149,7 @@ export struct EditFeedPageContent {
       this.normalizeKey(this.newTextKey, 'text'), this.normalizeKey(this.newByKey, 'by'),
       this.normalizeKey(this.newFromKey, 'from'), this.normalizeKey(this.newTimeKey, 'time'),
       this.normalizeKey(this.newUriKey, 'uri'), this.newObjectKey.trim(), this.apiMethods[this.newApiMethodIndex]);
+    this.notifyFeedConfigUpdated();
     this.showAddDialog = false;
     this.resetAddFeedForm();
     this.loadFeeds();
@@ -201,10 +233,12 @@ export struct EditFeedPageContent {
       promptAction.showToast({ message: '请输入订阅源地址' });
       return;
     }
-    await this.coreUtil.updateFeed(this.editFeedIndex, this.editFeedName.trim(), this.editFeedUrl.trim(),
+    const sourceIndex = this.feedIndexes[this.editFeedIndex] ?? this.editFeedIndex;
+    await this.coreUtil.updateFeed(sourceIndex, this.editFeedName.trim(), this.editFeedUrl.trim(),
       this.normalizeKey(this.editTextKey, 'text'), this.normalizeKey(this.editByKey, 'by'),
       this.normalizeKey(this.editFromKey, 'from'), this.normalizeKey(this.editTimeKey, 'time'),
       this.normalizeKey(this.editUriKey, 'uri'), this.editObjectKey.trim(), this.apiMethods[this.editApiMethodIndex]);
+    this.notifyFeedConfigUpdated();
     this.showEditDialog = false;
     this.resetEditFeedForm();
     this.loadFeeds();
@@ -235,7 +269,7 @@ export struct EditFeedPageContent {
         }
         .width('100%')
         .height('100%')
-        .padding({ top: UiStyle.PAGE_TOP })
+        .padding({ top: UiStyle.FULLSCREEN_TOP_INSET })
       }
       .width('100%')
       .height('100%')
@@ -286,8 +320,8 @@ export struct EditFeedPageContent {
         this.DialogActions('取消', '添加', () => {
           this.showAddDialog = false;
           this.resetAddFeedForm();
-        }, () => {
-          this.addFeed();
+        }, async () => {
+          await this.addFeed();
         })
       }
       .width('90%')
@@ -422,8 +456,8 @@ export struct EditFeedPageContent {
         this.DialogActions('取消', '保存', () => {
           this.showEditDialog = false;
           this.resetEditFeedForm();
-        }, () => {
-          this.saveEditFeed();
+        }, async () => {
+          await this.saveEditFeed();
         })
       }
       .width('90%')
@@ -530,32 +564,38 @@ export struct EditFeedPageContent {
   }
 
   @Builder
-  DialogActions(cancelText: string, confirmText: string, onCancel: () => void, onConfirm: () => void) {
+  DialogActions(cancelText: string, confirmText: string, onCancel: () => void | Promise<void>,
+    onConfirm: () => void | Promise<void>) {
     Row() {
       Button(cancelText)
-        .type(ButtonType.Normal)
-        .borderRadius(5)
+        .type(ButtonType.Capsule)
+        .borderRadius(22)
         .fontSize(14)
         .fontColor($r('app.color.colorText2'))
-        .backgroundColor(UiStyle.TRANSPARENT)
-        .border({ width: 1.05, color: $r('app.color.colorMD2BG') })
-        .height(40)
+        .backgroundColor(this.getGlassControlColor())
+        .border({ width: 1, color: this.getGlassCardBorder() })
+        .height(44)
         .layoutWeight(1)
         .onClick(() => {
-          onCancel();
+          Promise.resolve(onCancel()).catch((e: Error) => {
+            console.error('EditFeedPage', `dialog cancel error: ${JSON.stringify(e)}`);
+          });
         })
 
       Button(confirmText)
-        .type(ButtonType.Normal)
-        .borderRadius(5)
+        .type(ButtonType.Capsule)
+        .borderRadius(22)
         .fontSize(14)
         .fontColor(Color.White)
         .backgroundColor($r('app.color.colorPrimary'))
-        .height(40)
+        .border({ width: 1, color: $r('app.color.colorPrimary') })
+        .height(44)
         .layoutWeight(1)
         .margin({ left: 12 })
         .onClick(() => {
-          onConfirm();
+          Promise.resolve(onConfirm()).catch((e: Error) => {
+            console.error('EditFeedPage', `dialog confirm error: ${JSON.stringify(e)}`);
+          });
         })
     }
     .width('100%')
@@ -599,7 +639,9 @@ export struct EditFeedPageContent {
               .height(20)
               .fillColor(UiStyle.DANGER)
               .onClick(() => {
-                this.deleteFeed(index);
+                this.deleteFeed(index).catch((e: Error) => {
+                  console.error('EditFeedPage', `delete feed error: ${JSON.stringify(e)}`);
+                });
               })
           }
           .width('100%')

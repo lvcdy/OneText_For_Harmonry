@@ -2,10 +2,20 @@ import { promptAction } from '@kit.ArkUI';
 import { AppBackgroundLayer } from '../common/AppBackgroundUtil';
 import { PreferencesUtil } from '../common/PreferencesUtil';
 import { UiStyle } from '../common/UiStyle';
+import { CoreUtil } from '../common/CoreUtil';
+import { FeedConfig } from '../model/DataModels';
+import { common } from '@kit.AbilityKit';
 
 const WELCOME_RESPONSIVE_WIDE_WIDTH: number = 720;
 const WELCOME_CONTENT_MAX_WIDTH_COMPACT: number = 560;
 const WELCOME_CONTENT_MAX_WIDTH_WIDE: number = 680;
+const HITOKOTO_FEED_NAME: string = 'Hitokoto';
+const HITOKOTO_API_URL: string = 'https://v1.hitokoto.cn';
+const HITOKOTO_API_PRESETS: string[] = [
+  'https://v1.hitokoto.cn',
+  'https://international.v1.hitokoto.cn'
+];
+const FEED_CONFIG_UPDATED_AT_KEY: string = 'feedConfigUpdatedAt';
 
 /**
  * 首次启动引导页 - 对齐原版 WelcomeActivity 的核心流程
@@ -15,8 +25,11 @@ export struct WelcomePageContent {
   @Consume('navPathStack') navPathStack: NavPathStack;
   @State currentStep: number = 0;
   @State pageWidth: number = 0;
+  @State hitokotoApiUrl: string = '';
 
   private prefs: PreferencesUtil = PreferencesUtil.getInstance();
+  private context: common.UIAbilityContext = getContext(this) as common.UIAbilityContext;
+  private coreUtil: CoreUtil = new CoreUtil(this.context);
 
   private isWideLayout(): boolean {
     return this.pageWidth >= WELCOME_RESPONSIVE_WIDE_WIDTH;
@@ -47,9 +60,28 @@ export struct WelcomePageContent {
   }
 
   private async finishWelcome(): Promise<void> {
+    await this.saveHitokotoApiConfig();
     await this.prefs.putBoolean('first_run', false);
+    AppStorage.setOrCreate<number>(FEED_CONFIG_UPDATED_AT_KEY, Date.now());
     this.navPathStack.pop();
     promptAction.showToast({ message: $r('app.string.welcome_done') });
+  }
+
+  private async saveHitokotoApiConfig(): Promise<void> {
+    const apiUrl = this.hitokotoApiUrl.trim();
+    const feeds = this.coreUtil.getAllFeeds();
+    const existingIndex = feeds.findIndex((feed: FeedConfig) =>
+      feed.feed_name === HITOKOTO_FEED_NAME || feed.api_url === HITOKOTO_API_URL || feed.feed_url === HITOKOTO_API_URL);
+    if (existingIndex >= 0) {
+      await this.coreUtil.updateFeed(existingIndex, HITOKOTO_FEED_NAME, apiUrl, 'hitokoto', 'from_who', 'from',
+        'time', 'uri', '', 'GET');
+      await this.prefs.putNumber('feed_code', existingIndex);
+    } else {
+      await this.coreUtil.addFeed(HITOKOTO_FEED_NAME, CoreUtil.FEED_TYPE_INTERNET, apiUrl, '', 'hitokoto',
+        'from_who', 'from', 'time', 'uri', '', 'GET');
+      await this.prefs.putNumber('feed_code', feeds.length);
+      await this.coreUtil.clearOneTextCache();
+    }
   }
 
   build() {
@@ -90,6 +122,7 @@ export struct WelcomePageContent {
     Column() {
       this.BrandHeader()
       this.QuotePreview()
+      this.ApiConfigCard()
 
       Column() {
         this.StepItem(0, $r('app.string.welcome_step1_title'), $r('app.string.welcome_step1_desc'))
@@ -108,7 +141,12 @@ export struct WelcomePageContent {
     }
     .width('100%')
     .constraintSize({ maxWidth: this.getContentMaxWidth() })
-    .padding({ left: UiStyle.PAGE_SIDE, right: UiStyle.PAGE_SIDE, top: UiStyle.PAGE_TOP, bottom: UiStyle.BOTTOM_ACTION_HEIGHT + 12 })
+    .padding({
+      left: UiStyle.PAGE_SIDE,
+      right: UiStyle.PAGE_SIDE,
+      top: UiStyle.FULLSCREEN_TOP_INSET,
+      bottom: UiStyle.BOTTOM_ACTION_HEIGHT + 12
+    })
   }
 
   @Builder
@@ -205,6 +243,63 @@ export struct WelcomePageContent {
     }
     .width('100%')
     .margin({ top: 24 })
+  }
+
+  @Builder
+  ApiConfigCard() {
+    Column() {
+      Row() {
+        Text('一言 API 地址')
+          .fontSize(13)
+          .fontWeight(FontWeight.Medium)
+          .fontColor($r('app.color.colorPrimary'))
+
+        Blank()
+      }
+      .width('100%')
+      .margin({ bottom: 12 })
+
+      TextInput({ placeholder: '请填入API地址', text: this.hitokotoApiUrl })
+        .width('100%')
+        .height(46)
+        .fontSize(14)
+        .fontColor($r('app.color.colorText2'))
+        .backgroundColor(this.getGlassControlColor())
+        .borderRadius(23)
+        .onChange((value: string) => {
+          this.hitokotoApiUrl = value;
+        })
+
+      Row({ space: 8 }) {
+        ForEach(HITOKOTO_API_PRESETS, (url: string) => {
+          Button(url === HITOKOTO_API_URL ? '官方 API' : '国际 API')
+            .type(ButtonType.Capsule)
+            .height(34)
+            .fontSize(13)
+            .fontColor($r('app.color.colorPrimary'))
+            .backgroundColor('#18000000')
+            .onClick(() => {
+              this.hitokotoApiUrl = url;
+            })
+        }, (url: string) => url)
+      }
+      .width('100%')
+      .margin({ top: 10 })
+
+      Text('可选择上方地址一键填入，也可以暂不填写。Hitokoto API 由第三方提供，非本应用开发者自建服务器。')
+        .fontSize(12)
+        .fontColor($r('app.color.colorText4'))
+        .width('100%')
+        .lineHeight(18)
+        .margin({ top: 10 })
+    }
+    .width('100%')
+    .padding(18)
+    .backgroundColor('#DCEEFF')
+    .border({ width: 1, color: '#BBD8FF' })
+    .borderRadius(UiStyle.CARD_RADIUS)
+    .shadow({ radius: 18, color: this.getGlassShadowColor(), offsetX: 0, offsetY: 6 })
+    .margin({ top: UiStyle.CARD_GAP })
   }
 
   @Builder

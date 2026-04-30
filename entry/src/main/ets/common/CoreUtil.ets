@@ -11,6 +11,7 @@ import { AppLanguageUtil } from './AppLanguageUtil';
  * 负责 Hitokoto 数据的读取、随机选取、订阅源管理等
  */
 export class CoreUtil {
+  static readonly API_MISSING_TEXT: string = '把一句话留在今天';
   static readonly TEXT_REPLACE_HOLDER: string = '@@';
   static readonly TEXT_REPLACE: string = '\n';
   static readonly FEED_TYPE_REMOTE: string = 'remote';
@@ -52,6 +53,18 @@ export class CoreUtil {
   private createEmptyOneText(): OneTextItem {
     return {
       text: '',
+      by: '',
+      from: '',
+      time: '',
+      uri: '',
+      quote1: '"',
+      quote2: '"'
+    };
+  }
+
+  private createApiMissingOneText(): OneTextItem {
+    return {
+      text: CoreUtil.API_MISSING_TEXT,
       by: '',
       from: '',
       time: '',
@@ -380,7 +393,11 @@ export class CoreUtil {
    */
   async getOneTextFromApi(feedMap: FeedConfig): Promise<OneTextItem> {
     try {
-      const result = await HttpUtil.request(feedMap.api_url ?? feedMap.feed_url ?? '', feedMap.api_method ?? 'GET');
+      const apiUrl = (feedMap.api_url ?? feedMap.feed_url ?? '').trim();
+      if (apiUrl === '') {
+        return this.createApiMissingOneText();
+      }
+      const result = await HttpUtil.request(apiUrl, feedMap.api_method ?? 'GET');
       await this.prefs.putString('api_string', result);
       return this.convertApiResponse(result, feedMap) ?? this.createEmptyOneText();
     } catch (e) {
@@ -562,13 +579,20 @@ export class CoreUtil {
     try {
       const feedCode = await this.prefs.getNumber('feed_code', 0);
       const feedMap = await this.getFeedInformation(feedCode);
-      const shouldUpdate = forceRefresh || await this.ifOneTextShouldUpdate(true);
-      const oneText = shouldUpdate ? (feedMap.feed_type === CoreUtil.FEED_TYPE_INTERNET
-        ? await this.getOneTextFromApi(feedMap)
-        : (await this.initOneText() ? await this.getOneText(true, true) : null)) :
-        (await this.getCurrentOneText() ?? (feedMap.feed_type === CoreUtil.FEED_TYPE_INTERNET
-          ? await this.getOneTextFromApi(feedMap)
-          : (await this.initOneText() ? await this.getOneText(false, true) : null)));
+      const isInternetFeed = feedMap.feed_type === CoreUtil.FEED_TYPE_INTERNET;
+      const apiUrl = (feedMap.api_url ?? feedMap.feed_url ?? '').trim();
+      let oneText: OneTextItem | null = null;
+
+      if (isInternetFeed && apiUrl === '') {
+        oneText = this.createApiMissingOneText();
+      } else {
+        oneText = await this.getCurrentOneText();
+        if (!oneText) {
+          oneText = isInternetFeed
+            ? await this.getOneTextFromApi(feedMap)
+            : (await this.initOneText() ? await this.getOneText(forceRefresh, true) : null);
+        }
+      }
 
       if (!oneText) {
         return null;
@@ -587,10 +611,10 @@ export class CoreUtil {
         'from': convertedOneText.from ?? '',
         'time': convertedOneText.time ?? '',
         'uri': convertedOneText.uri ?? '',
-        'widget_dark': String(widgetDark),
-        'widget_shadow': String(widgetShadow),
-        'widget_center': String(widgetCenter),
-        'widget_blur_background': String(widgetBlurBackground)
+        'widget_dark': widgetDark ? 'true' : 'false',
+        'widget_shadow': widgetShadow ? 'true' : 'false',
+        'widget_center': widgetCenter ? 'true' : 'false',
+        'widget_blur_background': widgetBlurBackground ? 'true' : 'false'
       };
     } catch (e) {
       console.error('CoreUtil', `buildWidgetFormData error: ${JSON.stringify(e)}`);
