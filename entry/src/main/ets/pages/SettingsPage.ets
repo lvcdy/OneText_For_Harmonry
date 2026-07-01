@@ -26,46 +26,6 @@ const WIDGET_BACKGROUND_BLUR_INDEX: number = 1;
 const FEED_CONFIG_UPDATED_AT_KEY: string = 'feedConfigUpdatedAt';
 
 /**
- * 刷新时间滑块组件 - 使用 @Link 实现真正的双向绑定
- */
-@Component
-struct RefreshTimeSlider {
-  @Link value: number;
-  @Prop label: string = '';
-  min: number = 1;
-  max: number = 24;
-  step: number = 1;
-  unit: string = 'H';
-  onChange: (value: number) => Promise<void> = async () => {};
-
-  build() {
-    Row() {
-      Text(this.label)
-        .fontSize(14)
-        .fontColor($r('app.color.colorText3'))
-        .width(this.unit === 'H' ? 120 : 140)
-      Slider({ value: this.value, min: this.min, max: this.max, step: this.step, style: SliderStyle.OutSet })
-        .layoutWeight(1)
-        .blockColor($r('app.color.colorPrimary'))
-        .trackColor($r('app.color.colorMD2BG'))
-        .selectedColor($r('app.color.colorPrimary'))
-        .onChange(async (nextValue: number) => {
-          this.value = nextValue;
-          await this.onChange(nextValue);
-        })
-      Text(`${Math.round(this.value)} ${this.unit}`)
-        .fontSize(13)
-        .fontColor($r('app.color.colorText3'))
-        .width(this.unit === 'H' ? 50 : 60)
-        .textAlign(TextAlign.End)
-    }
-    .width('100%')
-    .height(56)
-    .padding({ left: UiStyle.CARD_SIDE, right: UiStyle.CARD_SIDE })
-  }
-}
-
-/**
  * 设置页面 - 替代 Android SettingActivity
  * HarmonyOS 7: 使用 NavDestination 作为导航目的地
  */
@@ -508,14 +468,29 @@ export struct SettingsPageContent {
       })
 
       this.SettingDivider()
-      RefreshTimeSlider({
-        value: $$this.feedRefreshTime,
-        label: '刷新时间',
-        min: 1, max: 24, step: 1, unit: 'H',
-        onChange: async (value: number) => {
-          await this.prefs.putNumber('feed_refresh_time', value);
-        }
-      })
+      Row() {
+        Text($r('app.string.feed_refresh_text'))
+          .fontSize(14)
+          .fontColor($r('app.color.colorText3'))
+          .width(120)
+        Slider({ value: this.feedRefreshTime, min: 1, max: 24, step: 1, style: SliderStyle.OutSet })
+          .layoutWeight(1)
+          .blockColor($r('app.color.colorPrimary'))
+          .trackColor($r('app.color.colorMD2BG'))
+          .selectedColor($r('app.color.colorPrimary'))
+          .onChange(async (nextValue: number) => {
+            this.feedRefreshTime = nextValue;
+            await this.prefs.putNumber('feed_refresh_time', nextValue);
+          })
+        Text(`${Math.round(this.feedRefreshTime)} H`)
+          .fontSize(13)
+          .fontColor($r('app.color.colorText3'))
+          .width(50)
+          .textAlign(TextAlign.End)
+      }
+      .width('100%')
+      .height(56)
+      .padding({ left: UiStyle.CARD_SIDE, right: UiStyle.CARD_SIDE })
     }
     .width('100%')
     .backgroundColor(this.getGlassCardColor())
@@ -549,15 +524,30 @@ export struct SettingsPageContent {
       this.SettingDivider()
       this.WidgetBackgroundModeRow()
       this.SettingDivider()
-      RefreshTimeSlider({
-        value: $$this.widgetRefreshTime,
-        label: '小组件刷新',
-        min: 30, max: 120, step: 30, unit: 'MIN',
-        onChange: async (value: number) => {
-          await this.prefs.putNumber('widget_refresh_time', value);
-          await this.refreshWidgetForms();
-        }
-      })
+      Row() {
+        Text($r('app.string.widget_refresh_text'))
+          .fontSize(14)
+          .fontColor($r('app.color.colorText3'))
+          .width(140)
+        Slider({ value: this.widgetRefreshTime, min: 30, max: 120, step: 30, style: SliderStyle.OutSet })
+          .layoutWeight(1)
+          .blockColor($r('app.color.colorPrimary'))
+          .trackColor($r('app.color.colorMD2BG'))
+          .selectedColor($r('app.color.colorPrimary'))
+          .onChange(async (nextValue: number) => {
+            this.widgetRefreshTime = nextValue;
+            await this.prefs.putNumber('widget_refresh_time', nextValue);
+            await this.refreshWidgetForms();
+          })
+        Text(`${Math.round(this.widgetRefreshTime)} MIN`)
+          .fontSize(13)
+          .fontColor($r('app.color.colorText3'))
+          .width(60)
+          .textAlign(TextAlign.End)
+      }
+      .width('100%')
+      .height(56)
+      .padding({ left: UiStyle.CARD_SIDE, right: UiStyle.CARD_SIDE })
     }
     .width('100%')
     .backgroundColor(this.getGlassCardColor())
