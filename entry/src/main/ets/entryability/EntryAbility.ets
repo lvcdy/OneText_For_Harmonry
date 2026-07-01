@@ -11,7 +11,9 @@ const DOMAIN = 0x0000;
 
 /**
  * 应用入口 Ability
- * HarmonyOS 6: 支持全面屏沉浸式布局，页面内容自行处理安全区间距
+ * HarmonyOS 7 (API 20+): 支持全面屏沉浸式布局，页面内容自行处理安全区间距
+ * 使用 setWindowLayoutFullScreen + setImmersiveModeEnabledState 实现沉浸光感
+ * 页面通过 @Env(SystemProperties.WINDOW_AVOID_AREA) 响应式获取避让区域
  */
 export default class EntryAbility extends UIAbility {
   onCreate(want: Want, launchParam: AbilityConstant.LaunchParam): void {
@@ -32,9 +34,11 @@ export default class EntryAbility extends UIAbility {
     const displayModeIndex = await prefs.getNumber(AppDisplayModeUtil.PREF_KEY, 0);
     AppDisplayModeUtil.apply(this.context, displayModeIndex);
 
-    // 开启全屏布局，让页面背景延伸到系统栏区域。
-    const mainWindow = await windowStage.getMainWindow();
+    // HarmonyOS 7 沉浸式布局：开启全屏布局，让页面背景延伸到系统栏区域。
+    const mainWindow: window.Window = await windowStage.getMainWindow();
     await mainWindow.setWindowLayoutFullScreen(true);
+
+    // 设置系统栏属性：透明状态栏 + 透明导航栏，实现沉浸光感效果
     await mainWindow.setWindowSystemBarProperties(AppDisplayModeUtil.getSystemBarProperties(this.context,
       displayModeIndex));
 

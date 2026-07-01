@@ -1,19 +1,21 @@
 import { common, Want } from '@kit.AbilityKit';
-import { promptAction } from '@kit.ArkUI';
+import { window } from '@kit.ArkUI';
 import { UiStyle } from '../common/UiStyle';
 import { AppBackgroundLayer } from '../common/AppBackgroundUtil';
 
 const ABOUT_CONTENT_MAX_WIDTH_COMPACT: number = 560;
 const ABOUT_CONTENT_MAX_WIDTH_WIDE: number = 760;
 const ABOUT_RESPONSIVE_WIDE_WIDTH: number = 720;
-const APP_VERSION_NAME: string = '1.0.0';
+const APP_VERSION_NAME: string = '2.0.0';
 
 /**
  * 关于页面 - 替代 Android AboutActivity
- * HarmonyOS 6: 使用 NavDestination 作为导航目的地
+ * HarmonyOS 7: 使用 NavDestination 作为导航目的地
  */
 @Component
 export struct AboutPageContent {
+  @Env(SystemProperties.WINDOW_AVOID_AREA) avoidAreas!: window.UIEnvWindowAvoidAreaInfoVP
+  @State statusBarHeight: number = 0;
   @State pageWidth: number = 0;
   @Consume('navPathStack') navPathStack: NavPathStack;
 
@@ -23,6 +25,29 @@ export struct AboutPageContent {
 
   private getContentMaxWidth(): number {
     return this.isWideLayout() ? ABOUT_CONTENT_MAX_WIDTH_WIDE : ABOUT_CONTENT_MAX_WIDTH_COMPACT;
+  }
+
+  /**
+   * 获取状态栏高度（vp），优先使用窗口API，回退到@Env
+   */
+  private getStatusBarHeight(): number {
+    if (this.statusBarHeight > 0) {
+      return this.statusBarHeight;
+    }
+    const statusBarHeightPx: number = this.avoidAreas.statusBar?.topRect?.height ?? 0;
+    return statusBarHeightPx > 0 ? this.getUIContext().px2vp(statusBarHeightPx) : 44;
+  }
+
+  async aboutToAppear(): Promise<void> {
+    try {
+      const context = this.getUIContext().getHostContext() as common.UIAbilityContext;
+      const win = await window.getLastWindow(context);
+      const avoidArea = win.getWindowAvoidArea(window.AvoidAreaType.TYPE_SYSTEM);
+      this.statusBarHeight = this.getUIContext().px2vp(avoidArea.topRect.height);
+    } catch (e) {
+      console.warn('AboutPage', `get status bar height failed: ${JSON.stringify(e)}`);
+      this.statusBarHeight = 44;
+    }
   }
 
   private getGlassCardColor(): ResourceColor {
@@ -40,7 +65,7 @@ export struct AboutPageContent {
     };
 
     try {
-      const context = getContext(this) as common.UIAbilityContext;
+      const context = this.getUIContext().getHostContext() as common.UIAbilityContext;
       await context.startAbility(want);
     } catch (e) {
       console.error('AboutPage', `openLink error: ${JSON.stringify(e)}`);
@@ -50,7 +75,7 @@ export struct AboutPageContent {
 
   private showToast(message: string): void {
     try {
-      promptAction.showToast({ message: message });
+      this.getUIContext().getPromptAction().showToast({ message: message });
     } catch (e) {
       console.warn('AboutPage', `showToast skipped: ${JSON.stringify(e)}`);
     }
@@ -97,7 +122,7 @@ export struct AboutPageContent {
         }
         .width('100%')
         .height('100%')
-        .padding({ top: UiStyle.FULLSCREEN_TOP_INSET })
+        .padding({ top: this.getStatusBarHeight() })
       }
       .width('100%')
       .height('100%')
@@ -129,7 +154,7 @@ export struct AboutPageContent {
           .fontColor($r('app.color.colorText3'))
           .margin({ top: 4 })
 
-        Text(`v${APP_VERSION_NAME} · HarmonyOS 6`)
+        Text(`v${APP_VERSION_NAME} · HarmonyOS 7`)
           .fontSize(12)
           .fontColor($r('app.color.colorText4'))
           .margin({ top: 8 })

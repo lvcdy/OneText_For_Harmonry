@@ -31,8 +31,8 @@ Hitokoto 是一个 HarmonyOS 版本的句子展示应用，项目地址为 <http
 
 ## 环境要求
 
-- DevEco Studio 6.x
-- HarmonyOS SDK 6.1.0（API 23）
+- DevEco Studio 26.0.0 Beta
+- HarmonyOS SDK 26.0.0（API 26）
 - Node.js 和 hvigor 环境由 DevEco Studio 提供即可
 
 ## 构建与运行
@@ -65,9 +65,8 @@ hvigorw clean --mode module -p product=default -p buildMode=release assembleHap
 应用声明了以下主要权限：
 
 - `ohos.permission.INTERNET`
-- `ohos.permission.DETECT_GESTURE`
 
-保存图片通过系统 `SaveButton` 临时授权后写入图库，不再声明图库写入权限。`DETECT_GESTURE` 用于左右手握持检测，以动态调整界面布局。
+保存图片通过系统 `SaveButton` 临时授权后写入图库，不再声明图库写入权限。
 
 ## 发布注意
 

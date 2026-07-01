@@ -41,10 +41,6 @@
             "value": "Save failed"
         },
         {
-            "name": "permission_detect_gesture_reason",
-            "value": "Allow Hitokoto to detect holding gestures for adaptive grip layout."
-        },
-        {
             "name": "refresh_button",
             "value": "Refresh"
         },
@@ -243,10 +239,6 @@
         {
             "name": "chinese_type",
             "value": "Language"
-        },
-        {
-            "name": "adaptive_grip",
-            "value": "Adaptive Grip"
         },
         {
             "name": "background_mode",

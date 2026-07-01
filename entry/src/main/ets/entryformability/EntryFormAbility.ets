@@ -10,13 +10,13 @@ const DOMAIN = 0x0000;
 
 /**
  * 桌面卡片 FormExtensionAbility
- * HarmonyOS 6: 支持 formId 持久化存储，确保卡片在重启后仍可正常更新
+ * HarmonyOS 7: 支持 formId 持久化存储，确保卡片在重启后仍可正常更新
  */
 export default class EntryFormAbility extends FormExtensionAbility {
   onAddForm(want: Want): formBindingData.FormBindingData {
     hilog.info(DOMAIN, TAG, 'onAddForm');
 
-    // HarmonyOS 6: 持久化存储 formId，确保后续可更新
+    // HarmonyOS 7: 持久化存储 formId，确保后续可更新
     const formId = want.parameters?.['ohos.extra.param.key.form_identity'] as string;
     if (formId) {
       this.saveFormId(formId);

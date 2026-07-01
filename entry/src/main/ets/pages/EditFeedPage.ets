@@ -1,5 +1,5 @@
 import { common } from '@kit.AbilityKit';
-import { promptAction } from '@kit.ArkUI';
+import { window } from '@kit.ArkUI';
 import { CoreUtil } from '../common/CoreUtil';
 import { AppBackgroundLayer } from '../common/AppBackgroundUtil';
 import { UiStyle } from '../common/UiStyle';
@@ -12,10 +12,12 @@ const FEED_CONFIG_UPDATED_AT_KEY: string = 'feedConfigUpdatedAt';
 
 /**
  * 编辑订阅源页面 - 替代 Android EditFeedActivity
- * HarmonyOS 6: 使用 NavDestination 作为导航目的地
+ * HarmonyOS 7: 使用 NavDestination 作为导航目的地
  */
 @Component
 export struct EditFeedPageContent {
+  @Env(SystemProperties.WINDOW_AVOID_AREA) avoidAreas!: window.UIEnvWindowAvoidAreaInfoVP
+  @State statusBarHeight: number = 0;
   @State feeds: FeedConfig[] = [];
   @State showAddDialog: boolean = false;
   @State newFeedName: string = '';
@@ -45,8 +47,8 @@ export struct EditFeedPageContent {
   @State feedIndexes: number[] = [];
   @Consume('navPathStack') navPathStack: NavPathStack;
 
-  private context: common.UIAbilityContext = getContext(this) as common.UIAbilityContext;
-  private coreUtil: CoreUtil = new CoreUtil(this.context);
+  private context!: common.UIAbilityContext;
+  private coreUtil!: CoreUtil;
   private feedTypes: string[] = ['远程 JSON', 'API 接口', '本地文件'];
   private apiMethods: string[] = ['GET', 'POST'];
 
@@ -56,6 +58,17 @@ export struct EditFeedPageContent {
 
   private getContentMaxWidth(): number {
     return this.isWideLayout() ? EDIT_FEED_CONTENT_MAX_WIDTH_WIDE : EDIT_FEED_CONTENT_MAX_WIDTH_COMPACT;
+  }
+
+  /**
+   * 获取状态栏高度（vp），优先使用窗口API，回退到@Env
+   */
+  private getStatusBarHeight(): number {
+    if (this.statusBarHeight > 0) {
+      return this.statusBarHeight;
+    }
+    const statusBarHeightPx: number = this.avoidAreas.statusBar?.topRect?.height ?? 0;
+    return statusBarHeightPx > 0 ? this.getUIContext().px2vp(statusBarHeightPx) : 44;
   }
 
   private getGlassCardColor(): ResourceColor {
@@ -75,6 +88,19 @@ export struct EditFeedPageContent {
   }
 
   async aboutToAppear(): Promise<void> {
+    this.context = this.getUIContext().getHostContext() as common.UIAbilityContext;
+    this.coreUtil = new CoreUtil(this.context);
+
+    // 获取状态栏高度（窗口API，比@Env更可靠）
+    try {
+      const win = await window.getLastWindow(this.context);
+      const avoidArea = win.getWindowAvoidArea(window.AvoidAreaType.TYPE_SYSTEM);
+      this.statusBarHeight = this.getUIContext().px2vp(avoidArea.topRect.height);
+    } catch (e) {
+      console.warn('EditFeedPage', `get status bar height failed: ${JSON.stringify(e)}`);
+      this.statusBarHeight = 44;
+    }
+
     this.loadFeeds();
   }
 
@@ -111,34 +137,36 @@ export struct EditFeedPageContent {
       return;
     }
     const sourceIndex = this.feedIndexes[index] ?? index;
-    AlertDialog.show({
+    this.getUIContext().showAlertDialog({
       title: '删除订阅源',
       message: `确定要删除 "${this.feeds[index].feed_name}" 吗？`,
-      primaryButton: {
-        value: '取消',
-        action: () => {
+      buttons: [
+        {
+          value: '取消',
+          action: () => {
+          }
+        },
+        {
+          value: '删除',
+          fontColor: Color.Red,
+          action: async () => {
+            await this.coreUtil.deleteFeed(sourceIndex);
+            this.notifyFeedConfigUpdated();
+            this.loadFeeds();
+            this.getUIContext().getPromptAction().showToast({ message: $r('app.string.delete_succeed') });
+          }
         }
-      },
-      secondaryButton: {
-        value: '删除',
-        fontColor: Color.Red,
-        action: async () => {
-          await this.coreUtil.deleteFeed(sourceIndex);
-          this.notifyFeedConfigUpdated();
-          this.loadFeeds();
-          promptAction.showToast({ message: $r('app.string.delete_succeed') });
-        }
-      }
+      ]
     });
   }
 
   private async addFeed(): Promise<void> {
     if (this.newFeedName.trim() === '') {
-      promptAction.showToast({ message: '请输入订阅源名称' });
+      this.getUIContext().getPromptAction().showToast({ message: '请输入订阅源名称' });
       return;
     }
     if (this.newFeedUrl.trim() === '') {
-      promptAction.showToast({ message: '请输入订阅源地址' });
+      this.getUIContext().getPromptAction().showToast({ message: '请输入订阅源地址' });
       return;
     }
     const feedType = this.newFeedType === 1 ? CoreUtil.FEED_TYPE_INTERNET :
@@ -153,7 +181,7 @@ export struct EditFeedPageContent {
     this.showAddDialog = false;
     this.resetAddFeedForm();
     this.loadFeeds();
-    promptAction.showToast({ message: $r('app.string.succeed') });
+    this.getUIContext().getPromptAction().showToast({ message: $r('app.string.succeed') });
   }
 
   private getFeedUrl(feed: FeedConfig): string {
@@ -226,11 +254,11 @@ export struct EditFeedPageContent {
       return;
     }
     if (this.editFeedName.trim() === '') {
-      promptAction.showToast({ message: '请输入订阅源名称' });
+      this.getUIContext().getPromptAction().showToast({ message: '请输入订阅源名称' });
       return;
     }
     if (this.editFeedUrl.trim() === '') {
-      promptAction.showToast({ message: '请输入订阅源地址' });
+      this.getUIContext().getPromptAction().showToast({ message: '请输入订阅源地址' });
       return;
     }
     const sourceIndex = this.feedIndexes[this.editFeedIndex] ?? this.editFeedIndex;
@@ -242,7 +270,7 @@ export struct EditFeedPageContent {
     this.showEditDialog = false;
     this.resetEditFeedForm();
     this.loadFeeds();
-    promptAction.showToast({ message: $r('app.string.succeed') });
+    this.getUIContext().getPromptAction().showToast({ message: $r('app.string.succeed') });
   }
 
   build() {
@@ -269,7 +297,7 @@ export struct EditFeedPageContent {
         }
         .width('100%')
         .height('100%')
-        .padding({ top: UiStyle.FULLSCREEN_TOP_INSET })
+        .padding({ top: this.getStatusBarHeight() })
       }
       .width('100%')
       .height('100%')

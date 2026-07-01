@@ -18,8 +18,8 @@ export class UiStyle {
   static readonly TAG_GREEN: string = '#4CAF50';
 
   static readonly PAGE_SIDE: number = 20;
-  // Content inset used while the window background extends behind the status bar.
-  static readonly FULLSCREEN_TOP_INSET: number = 44;
+  // 鸿蒙7: 使用 @Env(SystemProperties.WINDOW_AVOID_AREA) 动态获取避让区域，不再需要硬编码
+  // FULLSCREEN_TOP_INSET 已迁移到各页面的 getStatusBarHeight() 方法
   static readonly CARD_RADIUS: number = 30;
   static readonly DIALOG_RADIUS: number = 24;
   static readonly CHIP_RADIUS: number = 18;

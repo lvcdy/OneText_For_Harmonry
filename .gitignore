@@ -7,3 +7,6 @@ build-profile.json5
 build/
 */build/
 entry/.preview/
+.local/
+*.har
+*.hap

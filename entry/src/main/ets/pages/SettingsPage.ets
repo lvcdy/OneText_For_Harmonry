@@ -1,11 +1,9 @@
 import { common, Want } from '@kit.AbilityKit';
-import { promptAction } from '@kit.ArkUI';
+import { window } from '@kit.ArkUI';
 import { photoAccessHelper } from '@kit.MediaLibraryKit';
-import { motion } from '@kit.MultimodalAwarenessKit';
 import { PreferencesUtil } from '../common/PreferencesUtil';
 import { AppLanguageUtil } from '../common/AppLanguageUtil';
 import { AppDisplayModeUtil } from '../common/AppDisplayModeUtil';
-import { PermissionUtil } from '../common/PermissionUtil';
 import {
   AppBackgroundLayer,
   AppBackgroundMode,
@@ -15,7 +13,6 @@ import {
 } from '../common/AppBackgroundUtil';
 import { CoreUtil } from '../common/CoreUtil';
 import { FormUtil } from '../common/FormUtil';
-import { GripUtil } from '../common/GripUtil';
 import { UiStyle } from '../common/UiStyle';
 import { FeedConfig, FeedItem } from '../model/DataModels';
 
@@ -29,11 +26,53 @@ const WIDGET_BACKGROUND_BLUR_INDEX: number = 1;
 const FEED_CONFIG_UPDATED_AT_KEY: string = 'feedConfigUpdatedAt';
 
 /**
+ * 刷新时间滑块组件 - 使用 @Link 实现真正的双向绑定
+ */
+@Component
+struct RefreshTimeSlider {
+  @Link value: number;
+  @Prop label: string = '';
+  min: number = 1;
+  max: number = 24;
+  step: number = 1;
+  unit: string = 'H';
+  onChange: (value: number) => Promise<void> = async () => {};
+
+  build() {
+    Row() {
+      Text(this.label)
+        .fontSize(14)
+        .fontColor($r('app.color.colorText3'))
+        .width(this.unit === 'H' ? 120 : 140)
+      Slider({ value: this.value, min: this.min, max: this.max, step: this.step, style: SliderStyle.OutSet })
+        .layoutWeight(1)
+        .blockColor($r('app.color.colorPrimary'))
+        .trackColor($r('app.color.colorMD2BG'))
+        .selectedColor($r('app.color.colorPrimary'))
+        .onChange(async (nextValue: number) => {
+          this.value = nextValue;
+          await this.onChange(nextValue);
+        })
+      Text(`${Math.round(this.value)} ${this.unit}`)
+        .fontSize(13)
+        .fontColor($r('app.color.colorText3'))
+        .width(this.unit === 'H' ? 50 : 60)
+        .textAlign(TextAlign.End)
+    }
+    .width('100%')
+    .height(56)
+    .padding({ left: UiStyle.CARD_SIDE, right: UiStyle.CARD_SIDE })
+  }
+}
+
+/**
  * 设置页面 - 替代 Android SettingActivity
- * HarmonyOS 6: 使用 NavDestination 作为导航目的地
+ * HarmonyOS 7: 使用 NavDestination 作为导航目的地
  */
 @Component
 export struct SettingsPageContent {
+  @Env(SystemProperties.WINDOW_AVOID_AREA) avoidAreas!: window.UIEnvWindowAvoidAreaInfoVP
+  @State statusBarHeight: number = 0;
   @State displayModeIndex: number = 0;
   @State languageTypeIndex: number = 0;
   @State feedAutoUpdate: boolean = true;
@@ -44,8 +83,6 @@ export struct SettingsPageContent {
   @State widgetRefreshTime: number = 30;
   @State feedList: FeedItem[] = [];
   @State selectedFeedIndex: number = 0;
-  @StorageLink('adaptiveGripEnabled') adaptiveGripEnabled: boolean = true;
-  @State isLeftHandHeld: boolean = false;
   @State pageWidth: number = 0;
   @State backgroundModeIndex: number = AppBackgroundMode.DEFAULT;
   @State backgroundApiText: string = '';
@@ -56,19 +93,13 @@ export struct SettingsPageContent {
   @Watch('onFeedConfigUpdated')
   feedConfigUpdatedAt: number = 0;
 
-  private context: common.UIAbilityContext = getContext(this) as common.UIAbilityContext;
+  private context!: common.UIAbilityContext;
   private prefs: PreferencesUtil = PreferencesUtil.getInstance();
-  private coreUtil: CoreUtil = new CoreUtil(this.context);
+  private coreUtil!: CoreUtil;
   private displayModes: string[] = ['跟随系统', '浅色模式', '深色模式'];
   private languageTypes: string[] = ['中文', '繁中', 'English'];
   private backgroundModes: string[] = ['默认纯色', '本地图片', 'API'];
   private widgetBackgroundModes: string[] = ['透明背板', '模糊背板'];
-  private holdingHandCallback = (status: motion.HoldingHandStatus): void => {
-    const leftHandHeld = GripUtil.getLeftHandHeld(status);
-    if (leftHandHeld !== null) {
-      this.updateGripSide(leftHandHeld);
-    }
-  };
 
   private isWideLayout(): boolean {
     return this.pageWidth >= SETTINGS_RESPONSIVE_WIDE_WIDTH;
@@ -80,6 +111,17 @@ export struct SettingsPageContent {
 
   private getCardWidth(): string {
     return this.isWideLayout() ? SETTINGS_CARD_WIDTH_WIDE : SETTINGS_CARD_WIDTH_COMPACT;
+  }
+
+  /**
+   * 获取状态栏高度（vp），优先使用窗口API，回退到@Env
+   */
+  private getStatusBarHeight(): number {
+    if (this.statusBarHeight > 0) {
+      return this.statusBarHeight;
+    }
+    const statusBarHeightPx: number = this.avoidAreas.statusBar?.topRect?.height ?? 0;
+    return statusBarHeightPx > 0 ? this.getUIContext().px2vp(statusBarHeightPx) : 44;
   }
 
   private getGlassCardColor(): ResourceColor {
@@ -110,6 +152,19 @@ export struct SettingsPageContent {
   }
 
   async aboutToAppear(): Promise<void> {
+    this.context = this.getUIContext().getHostContext() as common.UIAbilityContext;
+    this.coreUtil = new CoreUtil(this.context);
+
+    // 获取状态栏高度（窗口API，比@Env更可靠）
+    try {
+      const win = await window.getLastWindow(this.context);
+      const avoidArea = win.getWindowAvoidArea(window.AvoidAreaType.TYPE_SYSTEM);
+      this.statusBarHeight = this.getUIContext().px2vp(avoidArea.topRect.height);
+    } catch (e) {
+      console.warn('SettingsPage', `get status bar height failed: ${JSON.stringify(e)}`);
+      this.statusBarHeight = 44;
+    }
+
     this.displayModeIndex = await this.prefs.getNumber(AppDisplayModeUtil.PREF_KEY, 0);
     this.languageTypeIndex = await this.loadLanguageType();
     this.feedAutoUpdate = await this.prefs.getBoolean('feed_auto_update', true);
@@ -123,58 +178,9 @@ export struct SettingsPageContent {
       await this.prefs.putNumber('widget_refresh_time', this.widgetRefreshTime);
     }
     this.selectedFeedIndex = await this.prefs.getNumber('feed_code', 0);
-    this.adaptiveGripEnabled = await this.prefs.getBoolean('adaptive_grip_enabled', true);
-    AppStorage.setOrCreate<boolean>('adaptiveGripEnabled', this.adaptiveGripEnabled);
     await this.loadBackgroundSettings();
     await this.loadWidgetBackgroundSettings();
     await this.loadFeedList();
-    if (this.adaptiveGripEnabled) {
-      await this.startGripAwareness();
-    }
-  }
-
-  aboutToDisappear(): void {
-    this.stopGripAwareness();
-  }
-
-  private stopGripAwareness(): void {
-    try {
-      motion.off('holdingHandChanged', this.holdingHandCallback);
-    } catch (e) {
-      console.warn('SettingsPage', `holdingHandChanged off skipped: ${JSON.stringify(e)}`);
-    }
-  }
-
-  private async startGripAwareness(): Promise<boolean> {
-    this.stopGripAwareness();
-    const hasPermission = await PermissionUtil.request(this.context, PermissionUtil.DETECT_GESTURE, 'SettingsPage');
-    if (!hasPermission) {
-      this.applyGripSide(false);
-      return false;
-    }
-    try {
-      motion.on('holdingHandChanged', this.holdingHandCallback);
-      return true;
-    } catch (e) {
-      console.warn('SettingsPage', `holdingHandChanged unsupported or permission denied: ${JSON.stringify(e)}`);
-      return false;
-    }
-  }
-
-  private updateGripSide(leftHandHeld: boolean): void {
-    if (!this.adaptiveGripEnabled) {
-      return;
-    }
-    this.applyGripSide(leftHandHeld);
-  }
-
-  private applyGripSide(leftHandHeld: boolean): void {
-    if (this.isLeftHandHeld === leftHandHeld) {
-      return;
-    }
-    animateTo({ duration: 260, curve: Curve.Friction }, () => {
-      this.isLeftHandHeld = leftHandHeld;
-    });
   }
 
   private async loadFeedList(): Promise<void> {
@@ -292,22 +298,22 @@ export struct SettingsPageContent {
       }
       this.appBackgroundUri = await AppBackgroundUtil.saveLocalImage(this.context, this.prefs, uri);
       this.backgroundModeIndex = AppBackgroundMode.LOCAL_IMAGE;
-      promptAction.showToast({ message: $r('app.string.background_image_selected') });
+      this.getUIContext().getPromptAction().showToast({ message: $r('app.string.background_image_selected') });
     } catch (e) {
       console.error('SettingsPage', `pick background image failed: ${JSON.stringify(e)}`);
-      promptAction.showToast({ message: $r('app.string.background_image_failed') });
+      this.getUIContext().getPromptAction().showToast({ message: $r('app.string.background_image_failed') });
     }
   }
 
   private async applyBackgroundApi(): Promise<void> {
     const apiUri = this.backgroundApiText.trim();
     if (apiUri === '') {
-      promptAction.showToast({ message: $r('app.string.background_api_empty') });
+      this.getUIContext().getPromptAction().showToast({ message: $r('app.string.background_api_empty') });
       return;
     }
     this.appBackgroundUri = await AppBackgroundUtil.setApi(this.prefs, apiUri);
     this.backgroundModeIndex = AppBackgroundMode.IMAGE_API;
-    promptAction.showToast({ message: $r('app.string.succeed') });
+    this.getUIContext().getPromptAction().showToast({ message: $r('app.string.succeed') });
   }
 
   private async changeWidgetBackgroundMode(index: number): Promise<void> {
@@ -324,13 +330,13 @@ export struct SettingsPageContent {
   }
 
   private async selectFeed(index: number): Promise<void> {
-    animateTo({ duration: 220, curve: Curve.EaseOut }, () => {
+    this.getUIContext().animateTo({ duration: 220, curve: Curve.EaseOut }, () => {
       this.selectedFeedIndex = index;
     });
     await this.prefs.putNumber('feed_code', index);
     await this.coreUtil.clearOneTextCache();
     AppStorage.setOrCreate<number>(FEED_CONFIG_UPDATED_AT_KEY, Date.now());
-    animateTo({ duration: 220, curve: Curve.EaseOut }, () => {
+    this.getUIContext().animateTo({ duration: 220, curve: Curve.EaseOut }, () => {
       this.feedList = this.feedList.map((item: FeedItem) => ({
         name: item.name,
         selected: item.index === index,
@@ -338,7 +344,7 @@ export struct SettingsPageContent {
       } as FeedItem));
     });
     await this.refreshWidgetForms();
-    promptAction.showToast({ message: $r('app.string.succeed') });
+    this.getUIContext().getPromptAction().showToast({ message: $r('app.string.succeed') });
   }
 
   private async refreshWidgetForms(): Promise<void> {
@@ -444,7 +450,7 @@ export struct SettingsPageContent {
     }
     .width('100%')
     .height(UiStyle.HEADER_HEIGHT)
-    .padding({ top: UiStyle.FULLSCREEN_TOP_INSET })
+    .padding({ top: this.getStatusBarHeight() })
   }
 
   @Builder
@@ -465,22 +471,6 @@ export struct SettingsPageContent {
         this.BackgroundApiRow()
       }
       this.SettingDivider()
-      this.SettingSwitch($r('app.string.adaptive_grip'), this.adaptiveGripEnabled, async (value: boolean) => {
-        this.adaptiveGripEnabled = value;
-        await this.prefs.putBoolean('adaptive_grip_enabled', value);
-        AppStorage.setOrCreate<boolean>('adaptiveGripEnabled', value);
-        if (value) {
-          const started = await this.startGripAwareness();
-          if (!started) {
-            this.adaptiveGripEnabled = false;
-            await this.prefs.putBoolean('adaptive_grip_enabled', false);
-            AppStorage.setOrCreate<boolean>('adaptiveGripEnabled', false);
-          }
-        } else {
-          this.stopGripAwareness();
-          this.applyGripSide(false);
-        }
-      })
     }
     .width('100%')
     .backgroundColor(this.getGlassCardColor())
@@ -494,13 +484,8 @@ export struct SettingsPageContent {
   FeedCard() {
     Column() {
       Row() {
-        if (this.isLeftHandHeld) {
-          this.EditFeedIcon()
-          this.CardTitle($r('app.string.feed_text'), 16)
-        } else {
-          this.CardTitle($r('app.string.feed_text'), 0)
-          this.EditFeedIcon()
-        }
+        this.CardTitle($r('app.string.feed_text'), 0)
+        this.EditFeedIcon()
       }
       .width('100%')
       .height(62)
@@ -523,11 +508,14 @@ export struct SettingsPageContent {
       })
 
       this.SettingDivider()
-      this.RefreshSliderRow($r('app.string.feed_refresh_text'), this.feedRefreshTime, 1, 24, 1, 'H',
-        async (value: number) => {
-          this.feedRefreshTime = value;
+      RefreshTimeSlider({
+        value: $$this.feedRefreshTime,
+        label: '刷新时间',
+        min: 1, max: 24, step: 1, unit: 'H',
+        onChange: async (value: number) => {
           await this.prefs.putNumber('feed_refresh_time', value);
-        })
+        }
+      })
     }
     .width('100%')
     .backgroundColor(this.getGlassCardColor())
@@ -561,12 +549,15 @@ export struct SettingsPageContent {
       this.SettingDivider()
       this.WidgetBackgroundModeRow()
       this.SettingDivider()
-      this.RefreshSliderRow($r('app.string.widget_refresh_text'), this.widgetRefreshTime, 30, 120, 30, 'MIN',
-        async (value: number) => {
-          this.widgetRefreshTime = value;
+      RefreshTimeSlider({
+        value: $$this.widgetRefreshTime,
+        label: '小组件刷新',
+        min: 30, max: 120, step: 30, unit: 'MIN',
+        onChange: async (value: number) => {
           await this.prefs.putNumber('widget_refresh_time', value);
           await this.refreshWidgetForms();
-        })
+        }
+      })
     }
     .width('100%')
     .backgroundColor(this.getGlassCardColor())
@@ -616,15 +607,9 @@ export struct SettingsPageContent {
   @Builder
   DisplayModeRow() {
     Row() {
-      if (this.isLeftHandHeld) {
-        this.DisplayModeSelect()
-        Blank()
-        this.SettingLabel($r('app.string.interface_daynight'))
-      } else {
-        this.SettingLabel($r('app.string.interface_daynight'))
-        Blank()
-        this.DisplayModeSelect()
-      }
+      this.SettingLabel($r('app.string.interface_daynight'))
+      Blank()
+      this.DisplayModeSelect()
     }
     .width('100%')
     .height(UiStyle.LIST_ROW_HEIGHT)
@@ -634,15 +619,9 @@ export struct SettingsPageContent {
   @Builder
   LanguageTypeRow() {
     Row() {
-      if (this.isLeftHandHeld) {
-        this.LanguageTypeSelect()
-        Blank()
-        this.SettingLabel($r('app.string.chinese_type'))
-      } else {
-        this.SettingLabel($r('app.string.chinese_type'))
-        Blank()
-        this.LanguageTypeSelect()
-      }
+      this.SettingLabel($r('app.string.chinese_type'))
+      Blank()
+      this.LanguageTypeSelect()
     }
     .width('100%')
     .height(UiStyle.LIST_ROW_HEIGHT)
@@ -676,13 +655,8 @@ export struct SettingsPageContent {
   @Builder
   FeedRow(item: FeedItem) {
     Row() {
-      if (this.isLeftHandHeld) {
-        this.FeedRadio(item)
-        this.FeedNameAfterControl(item)
-      } else {
-        this.FeedNameBeforeControl(item)
-        this.FeedRadio(item)
-      }
+      this.FeedNameBeforeControl(item)
+      this.FeedRadio(item)
     }
     .width('100%')
     .height(48)
@@ -696,34 +670,7 @@ export struct SettingsPageContent {
     })
   }
 
-  @Builder
-  RefreshSliderRow(label: Resource, value: number, min: number, max: number, step: number, unit: string,
-    onChange: (value: number) => Promise<void>) {
-    Row() {
-      Text(label)
-        .fontSize(14)
-        .fontColor($r('app.color.colorText3'))
-        .width(unit === 'H' ? 120 : 140)
-      Slider({ value: value, min: min, max: max, step: step, style: SliderStyle.OutSet })
-        .layoutWeight(1)
-        .blockColor($r('app.color.colorPrimary'))
-        .trackColor($r('app.color.colorMD2BG'))
-        .selectedColor($r('app.color.colorPrimary'))
-        .onChange((nextValue: number) => {
-          onChange(nextValue).catch((e: Error) => {
-            console.error('SettingsPage', `slider change error: ${JSON.stringify(e)}`);
-          });
-        })
-      Text(`${Math.round(value)} ${unit}`)
-        .fontSize(13)
-        .fontColor($r('app.color.colorText3'))
-        .width(unit === 'H' ? 50 : 60)
-        .textAlign(TextAlign.End)
-    }
-    .width('100%')
-    .height(56)
-    .padding({ left: UiStyle.CARD_SIDE, right: UiStyle.CARD_SIDE })
-  }
+
 
   @Builder
   SettingLabel(label: Resource) {
@@ -743,7 +690,7 @@ export struct SettingsPageContent {
       .borderRadius(24)
       .height(44)
       .onSelect(async (index: number) => {
-        animateTo({ duration: 180, curve: Curve.EaseOut }, () => {
+        this.getUIContext().animateTo({ duration: 180, curve: Curve.EaseOut }, () => {
           this.displayModeIndex = index;
         });
         await this.prefs.putNumber(AppDisplayModeUtil.PREF_KEY, index);
@@ -933,15 +880,9 @@ export struct SettingsPageContent {
   @Builder
   SettingSwitch(label: Resource, isOn: boolean, onChange: (value: boolean) => Promise<void>) {
     Row() {
-      if (this.isLeftHandHeld) {
-        this.SwitchControl(isOn, onChange)
-        Blank()
-        this.SettingLabel(label)
-      } else {
-        this.SettingLabel(label)
-        Blank()
-        this.SwitchControl(isOn, onChange)
-      }
+      this.SettingLabel(label)
+      Blank()
+      this.SwitchControl(isOn, onChange)
     }
     .width('100%')
     .height(58)

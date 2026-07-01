@@ -41,10 +41,6 @@
             "value": "儲存失敗"
         },
         {
-            "name": "permission_detect_gesture_reason",
-            "value": "允許 Hitokoto 偵測握持姿態，用於自動調整介面佈局。"
-        },
-        {
             "name": "refresh_button",
             "value": "重新整理"
         },
@@ -243,10 +239,6 @@
         {
             "name": "chinese_type",
             "value": "語言"
-        },
-        {
-            "name": "adaptive_grip",
-            "value": "適人握持"
         },
         {
             "name": "background_mode",

@@ -1,24 +1,20 @@
 import { common, Want } from '@kit.AbilityKit';
 import { fileIo } from '@kit.CoreFileKit';
 import { pasteboard } from '@kit.BasicServicesKit';
-import { font, promptAction } from '@kit.ArkUI';
+import { window, componentSnapshot } from '@kit.ArkUI';
 import { HdsTabs, hdsMaterial } from '@kit.UIDesignKit';
 import { image } from '@kit.ImageKit';
 import { uniformTypeDescriptor } from '@kit.ArkData';
 import { systemShare } from '@kit.ShareKit';
 import { CoreUtil } from '../common/CoreUtil';
 import { OneTextMetaUtil } from '../common/OneTextMetaUtil';
-import { PermissionUtil } from '../common/PermissionUtil';
 import { PreferencesUtil } from '../common/PreferencesUtil';
 import { UiStyle } from '../common/UiStyle';
 import { AppBackgroundLayer, AppBackgroundUtil } from '../common/AppBackgroundUtil';
 import { FormUtil } from '../common/FormUtil';
-import { GripUtil } from '../common/GripUtil';
 import { HuaweiAccountUtil } from '../common/HuaweiAccountUtil';
 import { OneTextItem } from '../model/DataModels';
-import { componentSnapshot } from '@kit.ArkUI';
 import { photoAccessHelper } from '@kit.MediaLibraryKit';
-import { motion } from '@kit.MultimodalAwarenessKit';
 import { SettingsPageContent } from './SettingsPage';
 import { AboutPageContent } from './AboutPage';
 import { EditFeedPageContent } from './EditFeedPage';
@@ -29,27 +25,19 @@ const LOGGED_IN_AVATAR_RADIUS: number = LOGGED_IN_AVATAR_SIZE / 2;
 const RESPONSIVE_WIDE_WIDTH: number = 720;
 const HOME_CONTENT_MAX_WIDTH_COMPACT: number = 560;
 const HOME_CONTENT_MAX_WIDTH_WIDE: number = 980;
-const HOME_QUOTE_SPAN_WIDE: number = 58;
-const HOME_ACTION_SPAN_WIDE: number = 42;
 const HOME_CONTENT_TOP_SPACE: number = 16;
-const MINE_ACCOUNT_HEADER_HEIGHT: number = 198;
-const MINE_ACCOUNT_HEADER_OFFSET_Y: number = 0;
-const MINE_PAGE_SIDE: number = 0;
-const MINE_SAFE_AREA_TOP_GAP: number = 0;
-const MINE_PANE_MAX_WIDTH_COMPACT: number = 440;
-const MINE_PANE_MAX_WIDTH_WIDE: number = 560;
-const MINE_PANE_MIN_HEIGHT: number = 686;
-const MINE_PANE_OFFSET_Y: number = 0;
-const MINE_FONT_CARD_TOP: number = 42;
-const MINE_FONT_CARD_OFFSET_Y: number = 0;
+const MINE_ACCOUNT_HEADER_HEIGHT: number = 140;
+const MINE_PAGE_SIDE: number = UiStyle.PAGE_SIDE;
+const MINE_PANE_MAX_WIDTH_COMPACT: number = 560;
+const MINE_PANE_MAX_WIDTH_WIDE: number = 680;
+const MINE_FONT_CARD_TOP: number = 16;
 const MINE_SETTINGS_CARD_TOP: number = 14;
-const MINE_SETTINGS_CARD_OFFSET_Y: number = 0;
 const DONATE_URL: string = 'https://hitokoto.cn/donate';
 
 /**
  * 主页面 - 替代 Android MainActivity
  * 展示 Hitokoto 内容，支持刷新、保存截图、分享等功能
- * HarmonyOS 6: 使用 Navigation + NavDestination 导航模式
+ * HarmonyOS 7: 使用 Navigation + NavDestination 导航模式
  */
 @Entry
 @Component
@@ -69,7 +57,6 @@ struct Index {
   @State timeFontSize: number = 15;
   @State fromFontSize: number = 15;
   @State sealVisible: boolean = false;
-  @State isLeftHandHeld: boolean = false;
   @State isRefreshing: boolean = false;
   @State hasShownWelcome: boolean = false;
   @State selectedTabIndex: number = 0;
@@ -77,32 +64,24 @@ struct Index {
   @State huaweiAccountName: string = '使用华为账号登录';
   @State huaweiAccountAvatar: string = '';
   @State hasHuaweiAccount: boolean = false;
-  @StorageLink('adaptiveGripEnabled')
-  @Watch('onAdaptiveGripChanged')
-  adaptiveGripEnabled: boolean = true;
   @State pageWidth: number = 0;
-  @State showFontSizeControls: boolean = false;
+  @State showFontSizeSheet: boolean = false;
   @State apiConfigMissing: boolean = false;
+  @State statusBarHeight: number = 0;
   @StorageLink('appBackgroundUri') appBackgroundUri: string = '';
   @StorageLink('feedConfigUpdatedAt')
   @Watch('onFeedConfigUpdated')
   feedConfigUpdatedAt: number = 0;
   @Provide('navPathStack') navPathStack: NavPathStack = new NavPathStack();
 
-  private context: common.UIAbilityContext = getContext(this) as common.UIAbilityContext;
-  private coreUtil: CoreUtil = new CoreUtil(this.context);
+  private context!: common.UIAbilityContext;
+  private coreUtil!: CoreUtil;
   private prefs: PreferencesUtil = PreferencesUtil.getInstance();
   private fontStyles: string[] = ['默认', '仓耳今楷', '霞鹜文楷'];
   private fontFamilies: string[] = ['HarmonyOS Sans', 'CangErJinKai', 'LXGWWenKai'];
   private fontSamples: string[] = ['樱', '楷', '文'];
   private fontDescriptions: string[] = ['恢复系统字体', '仓耳今楷 01-W04', '霞鹜文楷 Regular'];
   private isPullRefreshRunning: boolean = false;
-  private holdingHandCallback = (status: motion.HoldingHandStatus): void => {
-    const leftHandHeld = GripUtil.getLeftHandHeld(status);
-    if (leftHandHeld !== null) {
-      this.updateGripSide(leftHandHeld);
-    }
-  };
 
   private isWideLayout(): boolean {
     return this.pageWidth >= RESPONSIVE_WIDE_WIDTH;
@@ -138,7 +117,19 @@ struct Index {
 
   async aboutToAppear(): Promise<void> {
     try {
+      this.context = this.getUIContext().getHostContext() as common.UIAbilityContext;
+      this.coreUtil = new CoreUtil(this.context);
       this.registerCustomFonts();
+
+      // 获取状态栏高度
+      try {
+        const win = await window.getLastWindow(this.context);
+        const avoidArea = win.getWindowAvoidArea(window.AvoidAreaType.TYPE_SYSTEM);
+        this.statusBarHeight = this.getUIContext().px2vp(avoidArea.topRect.height);
+      } catch (e) {
+        this.statusBarHeight = 44;
+        console.warn('Index', `getStatusBarHeight fallback: ${JSON.stringify(e)}`);
+      }
 
       // 加载偏好设置
       this.textFontSize = await this.prefs.getNumber('onetext_text_size', 23);
@@ -147,12 +138,7 @@ struct Index {
       this.fromFontSize = await this.prefs.getNumber('onetext_from_size', 15);
       this.fontStyleIndex = Math.min(await this.prefs.getNumber('onetext_font_style', 0), this.fontStyles.length - 1);
       this.sealVisible = await this.prefs.getBoolean('seal_enabled', false);
-      this.adaptiveGripEnabled = await this.prefs.getBoolean('adaptive_grip_enabled', true);
-      AppStorage.setOrCreate<boolean>('adaptiveGripEnabled', this.adaptiveGripEnabled);
       this.appBackgroundUri = await AppBackgroundUtil.getBackgroundUri(this.prefs);
-      if (!this.adaptiveGripEnabled) {
-        this.applyGripSide(false);
-      }
       await this.loadHuaweiAccount();
 
       // 初始化订阅源
@@ -171,57 +157,10 @@ struct Index {
         await this.loadOneText(false);
       }
 
-      if (this.adaptiveGripEnabled) {
-        await this.startGripAwareness();
-      }
     } catch (e) {
       this.isLoading = false;
       console.error('Index', `aboutToAppear skipped: ${JSON.stringify(e)}`);
     }
-  }
-
-  aboutToDisappear(): void {
-    this.stopGripAwareness();
-  }
-
-  private stopGripAwareness(): void {
-    try {
-      motion.off('holdingHandChanged', this.holdingHandCallback);
-    } catch (e) {
-      console.warn('Index', `holdingHandChanged off skipped: ${JSON.stringify(e)}`);
-    }
-  }
-
-  private async startGripAwareness(): Promise<boolean> {
-    this.stopGripAwareness();
-    const hasPermission = await PermissionUtil.request(this.context, PermissionUtil.DETECT_GESTURE, 'Index');
-    if (!hasPermission) {
-      this.applyGripSide(false);
-      return false;
-    }
-    try {
-      motion.on('holdingHandChanged', this.holdingHandCallback);
-      return true;
-    } catch (e) {
-      console.warn('Index', `holdingHandChanged unsupported or permission denied: ${JSON.stringify(e)}`);
-      return false;
-    }
-  }
-
-  private updateGripSide(leftHandHeld: boolean): void {
-    if (!this.adaptiveGripEnabled) {
-      return;
-    }
-    this.applyGripSide(leftHandHeld);
-  }
-
-  private applyGripSide(leftHandHeld: boolean): void {
-    if (this.isLeftHandHeld === leftHandHeld) {
-      return;
-    }
-    animateTo({ duration: 260, curve: Curve.EaseOut }, () => {
-      this.isLeftHandHeld = leftHandHeld;
-    });
   }
 
   private onFeedConfigUpdated(): void {
@@ -231,17 +170,6 @@ struct Index {
     this.loadOneText(false).catch((e: Error) => {
       console.error('Index', `reload one text error: ${JSON.stringify(e)}`);
     });
-  }
-
-  private onAdaptiveGripChanged(): void {
-    if (this.adaptiveGripEnabled) {
-      this.startGripAwareness().catch((e: Error) => {
-        console.error('Index', `start grip awareness error: ${JSON.stringify(e)}`);
-      });
-      return;
-    }
-    this.stopGripAwareness();
-    this.applyGripSide(false);
   }
 
   private async refreshByPull(): Promise<void> {
@@ -264,11 +192,12 @@ struct Index {
 
   private registerCustomFonts(): void {
     try {
-      font.registerFont({
+      const fontManager = this.getUIContext().getFont();
+      fontManager.registerFont({
         familyName: 'CangErJinKai',
         familySrc: $rawfile('fonts/canger_jinkai.ttf')
       });
-      font.registerFont({
+      fontManager.registerFont({
         familyName: 'LXGWWenKai',
         familySrc: $rawfile('fonts/lxgw_wenkai.ttf')
       });
@@ -279,7 +208,7 @@ struct Index {
 
   private showToast(message: ResourceStr | string): void {
     try {
-      promptAction.showToast({ message: message });
+      this.getUIContext().getPromptAction().showToast({ message: message });
     } catch (e) {
       console.warn('Index', `showToast skipped: ${JSON.stringify(e)}`);
     }
@@ -414,18 +343,6 @@ struct Index {
     }
   }
 
-  private createEmptyOneText(): OneTextItem {
-    return {
-      text: '',
-      by: '',
-      from: '',
-      time: '',
-      uri: '',
-      quote1: '\u201C',
-      quote2: '\u201D'
-    };
-  }
-
   private createApiMissingOneText(): OneTextItem {
     return {
       text: CoreUtil.API_MISSING_TEXT,
@@ -513,7 +430,7 @@ struct Index {
    */
   private async saveScreenshot(): Promise<void> {
     try {
-      const pixelMap = await componentSnapshot.get('onetext_save_card');
+      const pixelMap: image.PixelMap = await componentSnapshot.get('onetext_save_card');
       const packer = image.createImagePacker();
       const data = await packer.packing(pixelMap, { format: 'image/jpeg', quality: 100 });
       const helper = photoAccessHelper.getPhotoAccessHelper(this.context);
@@ -616,25 +533,21 @@ struct Index {
 
   @Builder
   HomePage() {
-    Column() {
-      this.HomeHeader()
+    Stack() {
+      Column() {
+        // 顶部安全区占位
+        Row()
+          .width('100%')
+          .height(this.getStatusBarHeight())
 
-      // 主内容区域 - 可滚动
-      Refresh({ refreshing: $$this.isRefreshing, offset: 72 }) {
-        Scroll() {
-          Column() {
-            Flex({ direction: FlexDirection.Row, wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Center }) {
-              Column() {
-                this.QuoteCard()
-              }
-              .width(this.isWideLayout() ? `${HOME_QUOTE_SPAN_WIDE}%` : '100%')
-              .padding({ left: this.isWideLayout() ? 8 : 0, right: this.isWideLayout() ? 8 : 0 })
+        this.HomeHeader()
 
-              Column() {
-                this.HomeActionCard()
-              }
-              .width(this.isWideLayout() ? `${HOME_ACTION_SPAN_WIDE}%` : '100%')
-              .padding({ left: this.isWideLayout() ? 8 : 0, right: this.isWideLayout() ? 8 : 0 })
+        // 主内容区域 - 可滚动
+        Refresh({ refreshing: $$this.isRefreshing, offset: 72 }) {
+          Scroll() {
+            Column() {
+              this.QuoteCard()
+              this.ActionGrid()
             }
             .width('100%')
             .constraintSize({ maxWidth: this.getHomeContentMaxWidth() })
@@ -646,20 +559,25 @@ struct Index {
             })
           }
           .width('100%')
-          .alignItems(HorizontalAlign.Center)
+          .scrollBar(BarState.Off)
+          .edgeEffect(EdgeEffect.Spring)
         }
         .width('100%')
-        .scrollBar(BarState.Off)
-        .edgeEffect(EdgeEffect.Spring)
+        .layoutWeight(1)
+        .pullDownRatio(0.72)
+        .refreshOffset(72)
+        .onRefreshing(async () => {
+          await this.refreshByPull();
+        })
       }
-      .width('100%')
-      .layoutWeight(1)
-      .pullDownRatio(0.72)
-      .refreshOffset(72)
-      .onRefreshing(async () => {
-        await this.refreshByPull();
-      })
+      .height('100%')
+
+      // 字号调节弹窗
+      if (this.showFontSizeSheet) {
+        this.FontSizeSheet()
+      }
     }
+    .width('100%')
     .height('100%')
   }
 
@@ -683,14 +601,13 @@ struct Index {
         .position({ x: 30, y: 34 })
         .zIndex(1)
 
-      if (this.sealVisible) {
-        Image($r('app.media.moemiku'))
-          .width(142)
-          .height(142)
-          .opacity(0.16)
-          .position({ x: 176, y: 144 })
-          .zIndex(1)
-      }
+      Image($r('app.media.moemiku'))
+        .width(142)
+        .height(142)
+        .opacity(0.75)
+        .position({ x: 176, y: 144 })
+        .zIndex(1)
+        .visibility(this.sealVisible ? Visibility.Visible : Visibility.None)
 
       Column() {
         Blank()
@@ -788,14 +705,13 @@ struct Index {
         .position({ x: 30, y: 34 })
         .zIndex(1)
 
-      if (this.sealVisible) {
-        Image($r('app.media.moemiku'))
-          .width(this.isWideLayout() ? 166 : 142)
-          .height(this.isWideLayout() ? 166 : 142)
-          .opacity(0.18)
-          .position({ x: this.isWideLayout() ? 356 : 176, y: this.isWideLayout() ? 166 : 144 })
-          .zIndex(1)
-      }
+      Image($r('app.media.moemiku'))
+        .width(this.isWideLayout() ? 166 : 142)
+        .height(this.isWideLayout() ? 166 : 142)
+        .opacity(0.75)
+        .position({ x: this.isWideLayout() ? 356 : 176, y: this.isWideLayout() ? 166 : 144 })
+        .zIndex(1)
+        .visibility(this.sealVisible ? Visibility.Visible : Visibility.None)
 
       Column() {
         Blank()
@@ -882,131 +798,252 @@ struct Index {
       .width('100%')
       .height('100%')
       .alignItems(HorizontalAlign.Center)
-      .padding({ left: this.isWideLayout() ? 44 : 30, right: this.isWideLayout() ? 44 : 30, top: 62, bottom: 26 })
+      .padding({ left: this.isWideLayout() ? 48 : 28, right: this.isWideLayout() ? 48 : 28, top: 56, bottom: 28 })
       .zIndex(2)
     }
     .id('onetext_card')
     .width('100%')
-    .height(this.isWideLayout() ? 360 : 306)
+    .height(this.isWideLayout() ? 380 : 340)
     .backgroundColor(this.getGlassCardColor())
     .backgroundBlurStyle(BlurStyle.BACKGROUND_THIN)
     .backdropBlur(18)
     .border({ width: 1, color: this.getGlassCardBorder() })
     .borderRadius(UiStyle.CARD_RADIUS)
-    .shadow({ radius: 24, color: this.getGlassShadowColor(), offsetX: 0, offsetY: 8 })
+    .shadow({ radius: 28, color: this.getGlassShadowColor(), offsetX: 0, offsetY: 10 })
   }
 
   @Builder
-  HomeActionCard() {
-    Column() {
-      this.SaveActionRow()
-
-      this.ActionRow($r('app.string.share_text'), $r('app.string.share_button'), async () => {
-        await this.shareCurrentText();
-      })
-
-      this.ActionRow($r('app.string.refresh_onetext_text'), $r('app.string.refresh_button'), async () => {
-        await this.refreshByPull();
-      })
-
-      this.ActionRow($r('app.string.seal_text'), this.sealVisible ? $r('app.string.seal_button_ison') : $r('app.string.seal_button_isoff'), async () => {
-        this.sealVisible = !this.sealVisible;
-        await this.prefs.putBoolean('seal_enabled', this.sealVisible);
-        this.showToast(this.sealVisible ? $r('app.string.seal_button_ison') : $r('app.string.seal_button_isoff'));
-      })
-
-      this.FontSizeToggle()
-      if (this.showFontSizeControls) {
-        this.FontSizeSliderRow(this.textFontSize, 12, 48, 23, (value: number) => {
-          this.setTextFontSize(value);
+  ActionGrid() {
+    Column({ space: 12 }) {
+      // 第一行: 保存、分享、刷新
+      Row({ space: 0 }) {
+        this.ActionIconButton($r('app.media.ic_download'), '保存', () => {
+          this.saveScreenshot().catch((e: Error) => {
+            console.error('Index', `save screenshot error: ${JSON.stringify(e)}`);
+          });
         })
-        this.FontSizeSliderRow(this.byFontSize, 8, 36, 18, (value: number) => {
-          this.setByFontSize(value);
+        Blank()
+        this.ActionIconButton($r('app.media.ic_share'), '分享', async () => {
+          await this.shareCurrentText();
         })
-        this.FontSizeSliderRow(this.fromFontSize, 8, 24, 15, (value: number) => {
-          this.setFromFontSize(value);
-        })
-        this.FontSizeSliderRow(this.timeFontSize, 8, 24, 15, (value: number) => {
-          this.setTimeFontSize(value);
+        Blank()
+        this.ActionIconButton($r('app.media.ic_refresh'), '刷新', async () => {
+          await this.refreshByPull();
         })
       }
+      .width('100%')
+
+      // 第二行: 印章、字号、设置
+      Row({ space: 0 }) {
+        Column({ space: 6 }) {
+          Stack({ alignContent: Alignment.Center }) {
+            Image($r('app.media.ic_heart'))
+              .width(22)
+              .height(22)
+              .fillColor(this.sealVisible ? $r('app.color.colorPrimary') : $r('app.color.colorText3'))
+              .opacity(this.sealVisible ? 1.0 : 0.6)
+          }
+          .width(52)
+          .height(52)
+          .backgroundColor(this.sealVisible ? '#1A2F6BFF' : this.getGlassControlColor())
+          .border({ width: 0.5, color: this.sealVisible ? '#332F6BFF' : this.getGlassCardBorder() })
+          .borderRadius(16)
+          .shadow({ radius: 6, color: this.getGlassShadowColor(), offsetX: 0, offsetY: 2 })
+
+          Text(this.sealVisible ? '印章开' : '印章关')
+            .fontSize(11)
+            .fontColor(this.sealVisible ? $r('app.color.colorPrimary') : $r('app.color.colorText2'))
+        }
+        .alignItems(HorizontalAlign.Center)
+        .layoutWeight(1)
+        .onClick(async () => {
+          this.sealVisible = !this.sealVisible;
+          await this.prefs.putBoolean('seal_enabled', this.sealVisible);
+          this.showToast(this.sealVisible ? $r('app.string.seal_button_ison') : $r('app.string.seal_button_isoff'));
+        })
+
+        Blank()
+        this.ActionIconButton($r('app.media.ic_edit'), '字号', () => {
+          this.showFontSizeSheet = !this.showFontSizeSheet;
+        })
+        Blank()
+        this.ActionIconButton($r('app.media.ic_settings'), '设置', () => {
+          this.navPathStack.pushPathByName('SettingsPage', null);
+        })
+      }
+      .width('100%')
     }
     .width('100%')
-    .padding({ left: 18, right: 18, top: 20, bottom: 18 })
-    .margin({ top: this.isWideLayout() ? 0 : 14 })
+    .padding({ left: 16, right: 16, top: 18, bottom: 16 })
+    .margin({ top: 14 })
     .backgroundColor(this.getGlassCardColor())
+    .backgroundBlurStyle(BlurStyle.BACKGROUND_THIN)
+    .backdropBlur(16)
     .border({ width: 1, color: this.getGlassCardBorder() })
     .borderRadius(26)
-    .shadow({ radius: 18, color: this.getGlassShadowColor(), offsetX: 0, offsetY: 6 })
+    .shadow({ radius: 16, color: this.getGlassShadowColor(), offsetX: 0, offsetY: 5 })
+  }
+
+  @Builder
+  ActionIconButton(icon: ResourceStr, label: string, onClick: () => void | Promise<void>) {
+    Column({ space: 6 }) {
+      Stack({ alignContent: Alignment.Center }) {
+        Image(icon)
+          .width(22)
+          .height(22)
+          .fillColor($r('app.color.colorPrimary'))
+      }
+      .width(52)
+      .height(52)
+      .backgroundColor(this.getGlassControlColor())
+      .border({ width: 0.5, color: this.getGlassCardBorder() })
+      .borderRadius(16)
+      .shadow({ radius: 6, color: this.getGlassShadowColor(), offsetX: 0, offsetY: 2 })
+
+      Text(label)
+        .fontSize(11)
+        .fontColor($r('app.color.colorText2'))
+    }
+    .alignItems(HorizontalAlign.Center)
+    .layoutWeight(1)
+    .onClick(() => {
+      Promise.resolve(onClick()).catch((e: Error) => {
+        console.error('Index', `action icon error: ${JSON.stringify(e)}`);
+      });
+    })
+  }
+
+  @Builder
+  FontSizeSheet() {
+    Column() {
+      // 半透明遮罩
+      Column()
+        .width('100%')
+        .layoutWeight(1)
+        .backgroundColor(UiStyle.OVERLAY_BG)
+        .onClick(() => {
+          this.showFontSizeSheet = false;
+        })
+
+      // 底部面板
+      Column() {
+        // 顶部拖拽指示条
+        Column()
+          .width(36)
+          .height(4)
+          .borderRadius(2)
+          .backgroundColor('#D0D0D0')
+          .margin({ top: 10, bottom: 6 })
+
+        Row() {
+          Text('字号调节')
+            .fontSize(18)
+            .fontWeight(FontWeight.Bold)
+            .fontColor($r('app.color.colorText1'))
+
+          Blank()
+
+          Text('完成')
+            .fontSize(15)
+            .fontColor($r('app.color.colorPrimary'))
+            .onClick(() => {
+              this.showFontSizeSheet = false;
+            })
+        }
+        .width('100%')
+        .padding({ left: 24, right: 24, top: 8, bottom: 12 })
+
+        Column({ space: 4 }) {
+          this.FontSizeSliderRow('正文', this.textFontSize, 12, 48, 23, (value: number) => {
+            this.setTextFontSize(value);
+          })
+          this.FontSizeSliderRow('署名', this.byFontSize, 8, 36, 18, (value: number) => {
+            this.setByFontSize(value);
+          })
+          this.FontSizeSliderRow('来源', this.fromFontSize, 8, 24, 15, (value: number) => {
+            this.setFromFontSize(value);
+          })
+          this.FontSizeSliderRow('时间', this.timeFontSize, 8, 24, 15, (value: number) => {
+            this.setTimeFontSize(value);
+          })
+        }
+        .width('100%')
+        .padding({ left: 20, right: 20, bottom: 40 })
+      }
+      .width('100%')
+      .backgroundColor(this.getGlassCardColor())
+      .backgroundBlurStyle(BlurStyle.BACKGROUND_THIN)
+      .backdropBlur(20)
+      .border({ width: 1, color: this.getGlassCardBorder() })
+      .borderRadius({ topLeft: 28, topRight: 28 })
+      .shadow({ radius: 20, color: this.getGlassShadowColor(), offsetX: 0, offsetY: -6 })
+    }
+    .width('100%')
+    .height('100%')
+    .position({ x: 0, y: 0 })
+    .zIndex(100)
   }
 
   @Builder
   HomeHeader() {
-    Column() {
+    Row() {
       Row() {
-        Row() {
-          Image($r('app.media.app_icon'))
-            .width(42)
-            .height(42)
-            .borderRadius(12)
-            .shadow({ radius: 10, color: this.getGlassShadowColor(), offsetX: 0, offsetY: 4 })
+        Image($r('app.media.app_icon'))
+          .width(36)
+          .height(36)
+          .borderRadius(10)
+          .shadow({ radius: 10, color: this.getGlassShadowColor(), offsetX: 0, offsetY: 3 })
 
-          Column() {
-            Text('Hitokoto')
-              .fontSize(30)
-              .fontWeight(FontWeight.Bold)
-              .fontColor($r('app.color.colorText1'))
-              .textShadow({ radius: 8, color: '#66000000', offsetX: 0, offsetY: 2 })
-
-            Text($r('app.string.home_subtitle'))
-              .fontSize(13)
-              .fontColor($r('app.color.colorText4'))
-              .margin({ top: 2 })
-              .textShadow({ radius: 6, color: '#66000000', offsetX: 0, offsetY: 1 })
-          }
-          .alignItems(HorizontalAlign.Start)
-          .margin({ left: 12 })
-        }
-        .layoutWeight(1)
-        .alignItems(VerticalAlign.Center)
-
-        Row() {
-          this.HeaderIconButton($r('app.media.ic_heart'), $r('app.color.colorPrimary'), async () => {
-            await this.openExternalLink(DONATE_URL);
-          })
-          this.HeaderIconButton($r('app.media.ic_settings'), $r('app.color.colorText2'), () => {
-            this.navPathStack.pushPathByName('SettingsPage', null);
-          })
-        }
-        .height(46)
-        .alignItems(VerticalAlign.Center)
+        Text('Hitokoto')
+          .fontSize(22)
+          .fontWeight(FontWeight.Bold)
+          .fontColor($r('app.color.colorText1'))
+          .margin({ left: 10 })
+          .textShadow({ radius: 6, color: '#33000000', offsetX: 0, offsetY: 1 })
       }
-      .width('100%')
-      .height(54)
+      .layoutWeight(1)
+      .alignItems(VerticalAlign.Center)
+
+      Row({ space: 10 }) {
+        this.HeaderIconButton($r('app.media.ic_heart'), $r('app.color.colorPrimary'), async () => {
+          await this.openExternalLink(DONATE_URL);
+        })
+        this.HeaderIconButton($r('app.media.ic_settings'), $r('app.color.colorText2'), () => {
+          this.navPathStack.pushPathByName('SettingsPage', null);
+        })
+      }
+      .height(40)
       .alignItems(VerticalAlign.Center)
     }
     .width('100%')
-    .height(UiStyle.HEADER_HEIGHT)
-    .padding({ left: UiStyle.PAGE_SIDE, right: UiStyle.PAGE_SIDE, top: UiStyle.FULLSCREEN_TOP_INSET })
+    .height(56)
+    .padding({ left: UiStyle.PAGE_SIDE, right: UiStyle.PAGE_SIDE, top: 8 })
+    .alignItems(VerticalAlign.Center)
+  }
+
+  /**
+   * 获取状态栏高度（vp），使用鸿蒙7响应式环境变量
+   */
+  private getStatusBarHeight(): number {
+    return this.statusBarHeight > 0 ? this.statusBarHeight : 44;
   }
 
   @Builder
   HeaderIconButton(icon: ResourceStr, iconColor: ResourceColor, onClick: () => void | Promise<void>) {
     Stack() {
       Image(icon)
-        .width(25)
-        .height(25)
+        .width(20)
+        .height(20)
         .fillColor(iconColor)
     }
-    .width(46)
-    .height(46)
+    .width(38)
+    .height(38)
     .backgroundColor(this.getGlassCardColor())
     .backgroundBlurStyle(BlurStyle.BACKGROUND_THIN)
     .backdropBlur(18)
     .border({ width: 1, color: this.getGlassCardBorder() })
-    .borderRadius(23)
-    .shadow({ radius: 12, color: this.getGlassShadowColor(), offsetX: 0, offsetY: 4 })
-    .margin({ left: 12 })
+    .borderRadius(19)
+    .shadow({ radius: 10, color: this.getGlassShadowColor(), offsetX: 0, offsetY: 3 })
     .onClick(() => {
       Promise.resolve(onClick()).catch((e: Error) => {
         console.error('Index', `header action error: ${JSON.stringify(e)}`);
@@ -1017,117 +1054,168 @@ struct Index {
   @Builder
   MinePage() {
     Column() {
-      Scroll() {
-        Column() {
+      // 顶部安全区占位
+      Row()
+        .width('100%')
+        .height(this.getStatusBarHeight())
+
+      // 页面标题
+      this.MineHeader()
+
+      List() {
+        ListItem() {
           this.MineAccountHeader()
+        }
+
+        ListItem() {
           this.MineFontCard()
+        }
+
+        ListItem() {
           this.MineSettingsCard()
         }
-        .width('100%')
-        .constraintSize({ maxWidth: this.getMinePaneMaxWidth(), minHeight: MINE_PANE_MIN_HEIGHT })
-        .padding({
-          left: MINE_PAGE_SIDE,
-          right: MINE_PAGE_SIDE,
-          top: MINE_SAFE_AREA_TOP_GAP,
-          bottom: UiStyle.FLOAT_TAB_BOTTOM_SPACE
-        })
-        .alignItems(HorizontalAlign.Center)
-        .translate({ y: MINE_PANE_OFFSET_Y })
       }
       .width('100%')
-      .height('100%')
+      .constraintSize({ maxWidth: this.getMinePaneMaxWidth() })
+      .layoutWeight(1)
+      .padding({
+        left: MINE_PAGE_SIDE,
+        right: MINE_PAGE_SIDE,
+        top: 0,
+        bottom: UiStyle.FLOAT_TAB_BOTTOM_SPACE
+      })
       .scrollBar(BarState.Off)
       .edgeEffect(EdgeEffect.Spring)
+      .divider({ strokeWidth: 0 })
     }
     .width('100%')
     .height('100%')
+    .justifyContent(FlexAlign.Start)
+  }
+
+  @Builder
+  MineHeader() {
+    Row() {
+      Text($r('app.string.tab_mine'))
+        .fontSize(28)
+        .fontWeight(FontWeight.Bold)
+        .fontColor($r('app.color.colorText1'))
+
+      Blank()
+    }
+    .width('100%')
+    .height(52)
+    .padding({ left: MINE_PAGE_SIDE, right: MINE_PAGE_SIDE })
   }
 
   @Builder
   MineAccountHeader() {
     Column() {
       if (this.hasHuaweiAccount) {
-        if (this.huaweiAccountAvatar.length > 0) {
-          Image(this.huaweiAccountAvatar)
-            .width(LOGGED_IN_AVATAR_SIZE)
-            .height(LOGGED_IN_AVATAR_SIZE)
-            .borderRadius(LOGGED_IN_AVATAR_RADIUS)
-            .objectFit(ImageFit.Cover)
-            .backgroundColor($r('app.color.colorSelectedBg'))
-        } else {
-          Image($r('app.media.app_icon'))
-            .width(LOGGED_IN_AVATAR_SIZE)
-            .height(LOGGED_IN_AVATAR_SIZE)
-            .borderRadius(LOGGED_IN_AVATAR_RADIUS)
-            .backgroundColor($r('app.color.colorSelectedBg'))
-            .padding(12)
+        Row({ space: 14 }) {
+          if (this.huaweiAccountAvatar.length > 0) {
+            Image(this.huaweiAccountAvatar)
+              .width(52)
+              .height(52)
+              .borderRadius(26)
+              .objectFit(ImageFit.Cover)
+              .backgroundColor($r('app.color.colorSelectedBg'))
+          } else {
+            Image($r('app.media.app_icon'))
+              .width(52)
+              .height(52)
+              .borderRadius(26)
+              .backgroundColor($r('app.color.colorSelectedBg'))
+              .padding(8)
+          }
+
+          Column() {
+            Text(this.huaweiAccountName)
+              .fontSize(18)
+              .fontWeight(FontWeight.Bold)
+              .fontColor($r('app.color.colorText1'))
+
+            Text($r('app.string.huawei_login_desc'))
+              .fontSize(12)
+              .fontColor($r('app.color.colorText4'))
+              .margin({ top: 4 })
+          }
+          .alignItems(HorizontalAlign.Start)
+          .layoutWeight(1)
         }
-
-        Text(this.huaweiAccountName)
-          .fontSize(21)
-          .fontWeight(FontWeight.Bold)
-          .fontColor($r('app.color.colorText1'))
-          .margin({ top: 12 })
+        .width('100%')
       } else {
-        Image($r('app.media.ic_user'))
-          .width(90)
-          .height(90)
-          .opacity(0.78)
+        Row({ space: 14 }) {
+          Image($r('app.media.ic_user'))
+            .width(52)
+            .height(52)
+            .opacity(0.78)
 
-        Text($r('app.string.huawei_login_title'))
-          .fontSize(24)
-          .fontWeight(FontWeight.Medium)
-          .fontColor($r('app.color.colorText1'))
-          .margin({ top: 14 })
+          Column() {
+            Text($r('app.string.huawei_login_title'))
+              .fontSize(18)
+              .fontWeight(FontWeight.Bold)
+              .fontColor($r('app.color.colorText1'))
 
-        Text($r('app.string.huawei_login_desc'))
-          .fontSize(14)
-          .fontColor($r('app.color.colorText4'))
-          .textAlign(TextAlign.Center)
-          .margin({ top: 8, bottom: 18 })
+            Text($r('app.string.huawei_login_desc'))
+              .fontSize(12)
+              .fontColor($r('app.color.colorText4'))
+              .margin({ top: 4 })
+          }
+          .alignItems(HorizontalAlign.Start)
+          .layoutWeight(1)
 
-        Button($r('app.string.huawei_login_button'))
-          .width(220)
-          .height(46)
-          .fontSize(16)
-          .fontWeight(FontWeight.Medium)
-          .fontColor(Color.White)
-          .backgroundColor($r('app.color.colorPrimary'))
-          .borderRadius(23)
-          .onClick(async () => {
-            await this.loginWithHuaweiAccount();
-          })
+          Button($r('app.string.huawei_login_button'))
+            .height(36)
+            .fontSize(14)
+            .fontWeight(FontWeight.Medium)
+            .fontColor(Color.White)
+            .backgroundColor($r('app.color.colorPrimary'))
+            .borderRadius(18)
+            .padding({ left: 18, right: 18 })
+            .onClick(async () => {
+              await this.loginWithHuaweiAccount();
+            })
+        }
+        .width('100%')
+        .alignItems(VerticalAlign.Center)
       }
     }
     .width('100%')
-    .height(MINE_ACCOUNT_HEADER_HEIGHT)
-    .justifyContent(FlexAlign.Center)
-    .padding({ left: 16, right: 16, top: 5, bottom: 5 })
-    .alignItems(HorizontalAlign.Center)
-    .translate({ y: MINE_ACCOUNT_HEADER_OFFSET_Y })
+    .padding({ left: 18, right: 18, top: 20, bottom: 20 })
+    .backgroundColor(this.getGlassCardColor())
+    .backgroundBlurStyle(BlurStyle.BACKGROUND_THIN)
+    .backdropBlur(18)
+    .border({ width: 1, color: this.getGlassCardBorder() })
+    .borderRadius(UiStyle.CARD_RADIUS)
+    .shadow({ radius: 16, color: this.getGlassShadowColor(), offsetX: 0, offsetY: 4 })
   }
 
   @Builder
   MineFontCard() {
     Column() {
-      Text($r('app.string.font_style'))
-        .fontSize(22)
-        .fontWeight(FontWeight.Bold)
-        .fontColor($r('app.color.colorText1'))
-        .width('100%')
-        .textAlign(TextAlign.Center)
-        .margin({ bottom: 18 })
+      Row() {
+        Text($r('app.string.font_style'))
+          .fontSize(18)
+          .fontWeight(FontWeight.Bold)
+          .fontColor($r('app.color.colorText1'))
+
+        Blank()
+      }
+      .width('100%')
+      .margin({ bottom: 16 })
 
       this.FontStyleOptions()
     }
     .width('100%')
-    .padding({ left: 18, right: 18, top: 24, bottom: 12 })
+    .padding({ left: 18, right: 18, top: 20, bottom: 16 })
     .backgroundColor(this.getGlassCardColor())
+    .backgroundBlurStyle(BlurStyle.BACKGROUND_THIN)
+    .backdropBlur(18)
     .border({ width: 1, color: this.getGlassCardBorder() })
     .borderRadius(UiStyle.CARD_RADIUS)
-    .shadow({ radius: 20, color: this.getGlassShadowColor(), offsetX: 0, offsetY: 6 })
+    .shadow({ radius: 16, color: this.getGlassShadowColor(), offsetX: 0, offsetY: 4 })
     .margin({ top: MINE_FONT_CARD_TOP })
-    .translate({ y: MINE_FONT_CARD_OFFSET_Y })
   }
 
   @Builder
@@ -1140,20 +1228,20 @@ struct Index {
       if (this.hasHuaweiAccount) {
         Divider()
           .strokeWidth(1)
-          .color('#EEF2F7')
-          .margin({ top: 4, bottom: 4 })
+          .color(this.getGlassCardBorder())
+          .margin({ left: 18, right: 18 })
 
         this.MineLogoutRow()
       }
     }
     .width('100%')
-    .padding({ left: 18, right: 18, top: 10, bottom: 8 })
     .margin({ top: MINE_SETTINGS_CARD_TOP })
     .backgroundColor(this.getGlassCardColor())
+    .backgroundBlurStyle(BlurStyle.BACKGROUND_THIN)
+    .backdropBlur(18)
     .border({ width: 1, color: this.getGlassCardBorder() })
     .borderRadius(UiStyle.CARD_RADIUS)
-    .shadow({ radius: 18, color: this.getGlassShadowColor(), offsetX: 0, offsetY: 6 })
-    .translate({ y: MINE_SETTINGS_CARD_OFFSET_Y })
+    .shadow({ radius: 16, color: this.getGlassShadowColor(), offsetX: 0, offsetY: 4 })
   }
 
   @Builder
@@ -1236,6 +1324,7 @@ struct Index {
     }
     .width('100%')
     .height(62)
+    .padding({ left: 18, right: 18 })
     .onClick(() => {
       onClick();
     })
@@ -1260,6 +1349,7 @@ struct Index {
     }
     .width('100%')
     .height(62)
+    .padding({ left: 18, right: 18 })
     .onClick(async () => {
       await this.logoutHuaweiAccount();
     })
@@ -1279,157 +1369,54 @@ struct Index {
   }
 
   @Builder
-  SaveActionRow() {
-    Flex({
-      direction: this.isLeftHandHeld ? FlexDirection.Row : FlexDirection.RowReverse,
-      alignItems: ItemAlign.Center
-    }) {
-      Column() {
-        SaveButton({
-          text: SaveDescription.SAVE,
-          buttonType: ButtonType.Capsule
+  FontSizeSliderRow(label: string, value: number, min: number, max: number, defaultValue: number,
+    onValueChange: (value: number) => void) {
+    Column({ space: 2 }) {
+      Row() {
+        Text(label)
+          .fontSize(13)
+          .fontColor($r('app.color.colorText2'))
+          .width(36)
+
+        Slider({
+          value: value,
+          min: min,
+          max: max,
+          step: 1,
+          style: SliderStyle.OutSet
         })
-          .borderRadius(21)
-          .fontSize(14)
-          .fontColor(Color.White)
-          .backgroundColor($r('app.color.colorPrimary'))
-          .width(96)
-          .height(44)
-          .onClick((event: ClickEvent, result: SaveButtonOnClickResult) => {
-            if (result === SaveButtonOnClickResult.SUCCESS) {
-              this.saveScreenshot().catch((e: Error) => {
-                console.error('Index', `save screenshot error: ${JSON.stringify(e)}`);
-              });
-              return;
-            }
-            if (result === SaveButtonOnClickResult.TEMPORARY_AUTHORIZATION_FAILED) {
-              this.showToast($r('app.string.save_fail'));
-            }
+          .layoutWeight(1)
+          .blockColor($r('app.color.colorPrimary'))
+          .trackColor($r('app.color.colorMD2BG'))
+          .selectedColor($r('app.color.colorPrimary'))
+          .onChange((value: number) => {
+            onValueChange(value);
+          })
+
+        Text(`${Math.round(value)}`)
+          .fontSize(13)
+          .fontColor($r('app.color.colorText3'))
+          .width(28)
+          .textAlign(TextAlign.Center)
+
+        Text($r('app.string.default_text'))
+          .fontSize(11)
+          .fontColor($r('app.color.colorPrimary'))
+          .width(46)
+          .height(26)
+          .textAlign(TextAlign.Center)
+          .borderRadius(13)
+          .backgroundColor(this.getGlassSelectedColor())
+          .border({ width: 0.5, color: this.getGlassCardBorder() })
+          .padding({ top: 7 })
+          .onClick(() => {
+            onValueChange(defaultValue);
           })
       }
-      .width(96)
-
-      Text($r('app.string.save_text'))
-        .fontSize(18)
-        .fontColor($r('app.color.colorText2'))
-        .layoutWeight(1)
-        .margin(this.isLeftHandHeld ? { left: 20, right: 0 } : { left: 0, right: 20 })
-        .textAlign(TextAlign.Start)
+      .width('100%')
+      .alignItems(VerticalAlign.Center)
     }
     .width('100%')
-    .height(60)
-    .padding({ bottom: 14 })
-    .animation({ duration: 360, curve: Curve.Friction })
-  }
-
-  @Builder
-  ActionRow(label: ResourceStr, buttonText: ResourceStr, onClick: () => void | Promise<void>) {
-    Flex({
-      direction: this.isLeftHandHeld ? FlexDirection.Row : FlexDirection.RowReverse,
-      alignItems: ItemAlign.Center
-    }) {
-      Column() {
-        this.ActionButton(buttonText, onClick)
-      }
-      .width(96)
-
-      Text(label)
-        .fontSize(18)
-        .fontColor($r('app.color.colorText2'))
-        .layoutWeight(1)
-        .margin(this.isLeftHandHeld ? { left: 20, right: 0 } : { left: 0, right: 20 })
-        .textAlign(this.isLeftHandHeld ? TextAlign.Start : TextAlign.Start)
-    }
-    .width('100%')
-    .height(60)
-    .padding({ bottom: 14 })
-    .animation({ duration: 360, curve: Curve.Friction })
-  }
-
-  @Builder
-  ActionButton(buttonText: ResourceStr, onClick: () => void | Promise<void>) {
-    Button(buttonText)
-      .type(ButtonType.Normal)
-      .borderRadius(21)
-      .fontSize(14)
-      .fontColor(Color.White)
-      .backgroundColor($r('app.color.colorPrimary'))
-      .width(96)
-      .height(44)
-      .onClick(() => {
-        Promise.resolve(onClick()).catch((e: Error) => {
-          console.error('Index', `action button error: ${JSON.stringify(e)}`);
-        });
-      })
-  }
-
-  @Builder
-  FontSizeToggle() {
-    Flex({
-      direction: this.isLeftHandHeld ? FlexDirection.Row : FlexDirection.RowReverse,
-      alignItems: ItemAlign.Center
-    }) {
-      Column() {
-        Image($r('app.media.ic_expand'))
-          .width(16)
-          .height(16)
-          .opacity(0.65)
-          .rotate({ angle: this.showFontSizeControls ? 180 : 0 })
-      }
-      .width(96)
-      .height(44)
-      .justifyContent(FlexAlign.Center)
-      .alignItems(HorizontalAlign.Center)
-
-      Text('字号')
-        .fontSize(18)
-        .fontColor($r('app.color.colorText2'))
-        .layoutWeight(1)
-        .margin(this.isLeftHandHeld ? { left: 20, right: 0 } : { left: 0, right: 20 })
-        .textAlign(TextAlign.Start)
-    }
-    .width('100%')
-    .height(50)
-    .onClick(() => {
-      this.showFontSizeControls = !this.showFontSizeControls;
-    })
-  }
-
-  @Builder
-  FontSizeSliderRow(value: number, min: number, max: number, defaultValue: number,
-    onValueChange: (value: number) => void) {
-    Row() {
-      Slider({
-        value: value,
-        min: min,
-        max: max,
-        step: 1,
-        style: SliderStyle.OutSet
-      })
-        .layoutWeight(1)
-        .blockColor($r('app.color.colorPrimary'))
-        .trackColor($r('app.color.colorMD2BG'))
-        .selectedColor($r('app.color.colorPrimary'))
-        .onChange((value: number) => {
-          onValueChange(value);
-        })
-        .margin({ left: 36, right: 24 })
-
-      Text($r('app.string.default_text'))
-        .fontSize(14)
-        .fontColor($r('app.color.colorPrimary'))
-        .width(82)
-        .height(38)
-        .textAlign(TextAlign.Center)
-        .borderRadius(19)
-        .backgroundColor(this.getGlassSelectedColor())
-        .border({ width: 1, color: this.getGlassCardBorder() })
-        .padding({ top: 10 })
-        .onClick(() => {
-          onValueChange(defaultValue);
-        })
-    }
-    .width('100%')
-    .padding({ bottom: 16 })
+    .padding({ bottom: 6 })
   }
 }

@@ -41,10 +41,6 @@
             "value": "保存失败"
         },
         {
-            "name": "permission_detect_gesture_reason",
-            "value": "允许 Hitokoto 检测握持姿态，用于自动调整界面布局。"
-        },
-        {
             "name": "refresh_button",
             "value": "刷新"
         },
@@ -243,10 +239,6 @@
         {
             "name": "chinese_type",
             "value": "语言"
-        },
-        {
-            "name": "adaptive_grip",
-            "value": "适人握持"
         },
         {
             "name": "background_mode",

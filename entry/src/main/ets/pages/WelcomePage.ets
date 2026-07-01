@@ -1,4 +1,4 @@
-import { promptAction } from '@kit.ArkUI';
+import { window } from '@kit.ArkUI';
 import { AppBackgroundLayer } from '../common/AppBackgroundUtil';
 import { PreferencesUtil } from '../common/PreferencesUtil';
 import { UiStyle } from '../common/UiStyle';
@@ -22,14 +22,16 @@ const FEED_CONFIG_UPDATED_AT_KEY: string = 'feedConfigUpdatedAt';
  */
 @Component
 export struct WelcomePageContent {
+  @Env(SystemProperties.WINDOW_AVOID_AREA) avoidAreas!: window.UIEnvWindowAvoidAreaInfoVP
   @Consume('navPathStack') navPathStack: NavPathStack;
+  @State statusBarHeight: number = 0;
   @State currentStep: number = 0;
   @State pageWidth: number = 0;
   @State hitokotoApiUrl: string = '';
 
   private prefs: PreferencesUtil = PreferencesUtil.getInstance();
-  private context: common.UIAbilityContext = getContext(this) as common.UIAbilityContext;
-  private coreUtil: CoreUtil = new CoreUtil(this.context);
+  private context!: common.UIAbilityContext;
+  private coreUtil!: CoreUtil;
 
   private isWideLayout(): boolean {
     return this.pageWidth >= WELCOME_RESPONSIVE_WIDE_WIDTH;
@@ -37,6 +39,17 @@ export struct WelcomePageContent {
 
   private getContentMaxWidth(): number {
     return this.isWideLayout() ? WELCOME_CONTENT_MAX_WIDTH_WIDE : WELCOME_CONTENT_MAX_WIDTH_COMPACT;
+  }
+
+  /**
+   * 获取状态栏高度（vp），优先使用窗口API，回退到@Env
+   */
+  private getStatusBarHeight(): number {
+    if (this.statusBarHeight > 0) {
+      return this.statusBarHeight;
+    }
+    const statusBarHeightPx: number = this.avoidAreas.statusBar?.topRect?.height ?? 0;
+    return statusBarHeightPx > 0 ? this.getUIContext().px2vp(statusBarHeightPx) : 44;
   }
 
   private getGlassCardColor(): ResourceColor {
@@ -59,12 +72,27 @@ export struct WelcomePageContent {
     return $r('app.color.colorGlassSelected');
   }
 
+  async aboutToAppear(): Promise<void> {
+    this.context = this.getUIContext().getHostContext() as common.UIAbilityContext;
+    this.coreUtil = new CoreUtil(this.context);
+
+    // 获取状态栏高度（窗口API，比@Env更可靠）
+    try {
+      const win = await window.getLastWindow(this.context);
+      const avoidArea = win.getWindowAvoidArea(window.AvoidAreaType.TYPE_SYSTEM);
+      this.statusBarHeight = this.getUIContext().px2vp(avoidArea.topRect.height);
+    } catch (e) {
+      console.warn('WelcomePage', `get status bar height failed: ${JSON.stringify(e)}`);
+      this.statusBarHeight = 44;
+    }
+  }
+
   private async finishWelcome(): Promise<void> {
     await this.saveHitokotoApiConfig();
     await this.prefs.putBoolean('first_run', false);
     AppStorage.setOrCreate<number>(FEED_CONFIG_UPDATED_AT_KEY, Date.now());
     this.navPathStack.pop();
-    promptAction.showToast({ message: $r('app.string.welcome_done') });
+    this.getUIContext().getPromptAction().showToast({ message: $r('app.string.welcome_done') });
   }
 
   private async saveHitokotoApiConfig(): Promise<void> {
@@ -90,6 +118,11 @@ export struct WelcomePageContent {
         AppBackgroundLayer()
 
         Column() {
+          // 顶部安全区占位
+          Row()
+            .width('100%')
+            .height(this.getStatusBarHeight())
+
           Scroll() {
             Column() {
               this.WelcomeContent()
@@ -144,7 +177,7 @@ export struct WelcomePageContent {
     .padding({
       left: UiStyle.PAGE_SIDE,
       right: UiStyle.PAGE_SIDE,
-      top: UiStyle.FULLSCREEN_TOP_INSET,
+      top: this.getStatusBarHeight(),
       bottom: UiStyle.BOTTOM_ACTION_HEIGHT + 12
     })
   }
