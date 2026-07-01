@@ -1189,8 +1189,10 @@ struct Index {
       Row({ space: 12 }) {
         // 复制今日一言
         Column() {
-          Text('📝')
-            .fontSize(28)
+          Image($r('app.media.ic_copy'))
+            .width(24)
+            .height(24)
+            .fillColor($r('app.color.colorPrimary'))
             .margin({ bottom: 8 })
 
           Text('复制一言')
@@ -1216,8 +1218,10 @@ struct Index {
 
         // 分享一言
         Column() {
-          Text('📤')
-            .fontSize(28)
+          Image($r('app.media.ic_share'))
+            .width(24)
+            .height(24)
+            .fillColor($r('app.color.colorPrimary'))
             .margin({ bottom: 8 })
 
           Text('分享一言')
@@ -1255,8 +1259,10 @@ struct Index {
 
         // 保存截图
         Column() {
-          Text('📸')
-            .fontSize(28)
+          Image($r('app.media.ic_download'))
+            .width(24)
+            .height(24)
+            .fillColor($r('app.color.colorPrimary'))
             .margin({ bottom: 8 })
 
           Text('保存截图')
