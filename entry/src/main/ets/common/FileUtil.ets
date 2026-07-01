@@ -47,8 +47,8 @@ export class FileUtil {
       const file = fileIo.openSync(filePath, fileIo.OpenMode.CREATE | fileIo.OpenMode.WRITE_ONLY | fileIo.OpenMode.TRUNC);
       try {
         const encoder = new util.TextEncoder();
-        const encoded = encoder.encode(content);
-        fileIo.writeSync(file.fd, encoded.buffer);
+        const encoded = encoder.encodeInto(content);
+        fileIo.writeSync(file.fd, encoded);
       } finally {
         fileIo.closeSync(file);
       }

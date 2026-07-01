@@ -60,7 +60,6 @@ struct Index {
   @State isRefreshing: boolean = false;
   @State hasShownWelcome: boolean = false;
   @State selectedTabIndex: number = 0;
-  @State fontStyleIndex: number = 0;
   @State huaweiAccountName: string = '使用华为账号登录';
   @State huaweiAccountAvatar: string = '';
   @State hasHuaweiAccount: boolean = false;
@@ -77,10 +76,6 @@ struct Index {
   private context!: common.UIAbilityContext;
   private coreUtil!: CoreUtil;
   private prefs: PreferencesUtil = PreferencesUtil.getInstance();
-  private fontStyles: string[] = ['默认', '仓耳今楷', '霞鹜文楷'];
-  private fontFamilies: string[] = ['HarmonyOS Sans', 'CangErJinKai', 'LXGWWenKai'];
-  private fontSamples: string[] = ['樱', '楷', '文'];
-  private fontDescriptions: string[] = ['恢复系统字体', '仓耳今楷 01-W04', '霞鹜文楷 Regular'];
   private isPullRefreshRunning: boolean = false;
 
   private isWideLayout(): boolean {
@@ -119,7 +114,6 @@ struct Index {
     try {
       this.context = this.getUIContext().getHostContext() as common.UIAbilityContext;
       this.coreUtil = new CoreUtil(this.context);
-      this.registerCustomFonts();
 
       // 获取状态栏高度
       try {
@@ -136,7 +130,6 @@ struct Index {
       this.byFontSize = await this.prefs.getNumber('onetext_by_size', 18);
       this.timeFontSize = await this.prefs.getNumber('onetext_time_size', 15);
       this.fromFontSize = await this.prefs.getNumber('onetext_from_size', 15);
-      this.fontStyleIndex = Math.min(await this.prefs.getNumber('onetext_font_style', 0), this.fontStyles.length - 1);
       this.sealVisible = await this.prefs.getBoolean('seal_enabled', false);
       this.appBackgroundUri = await AppBackgroundUtil.getBackgroundUri(this.prefs);
       await this.loadHuaweiAccount();
@@ -187,23 +180,7 @@ struct Index {
   }
 
   private getCurrentFontFamily(): string {
-    return this.fontFamilies[this.fontStyleIndex] ?? 'HarmonyOS Sans';
-  }
-
-  private registerCustomFonts(): void {
-    try {
-      const fontManager = this.getUIContext().getFont();
-      fontManager.registerFont({
-        familyName: 'CangErJinKai',
-        familySrc: $rawfile('fonts/canger_jinkai.ttf')
-      });
-      fontManager.registerFont({
-        familyName: 'LXGWWenKai',
-        familySrc: $rawfile('fonts/lxgw_wenkai.ttf')
-      });
-    } catch (e) {
-      console.warn('Index', `Register custom fonts skipped: ${JSON.stringify(e)}`);
-    }
+    return 'HarmonyOS Sans';
   }
 
   private showToast(message: ResourceStr | string): void {
@@ -432,7 +409,7 @@ struct Index {
     try {
       const pixelMap: image.PixelMap = await componentSnapshot.get('onetext_save_card');
       const packer = image.createImagePacker();
-      const data = await packer.packing(pixelMap, { format: 'image/jpeg', quality: 100 });
+      const data = await packer.packToData(pixelMap, { format: 'image/jpeg', quality: 100 });
       const helper = photoAccessHelper.getPhotoAccessHelper(this.context);
       const uri = await helper.createAsset(photoAccessHelper.PhotoType.IMAGE, 'jpg', {
         title: `Hitokoto_${Date.now()}`
@@ -1068,11 +1045,15 @@ struct Index {
         }
 
         ListItem() {
-          this.MineFontCard()
+          this.MineQuickActionsCard()
         }
 
         ListItem() {
           this.MineSettingsCard()
+        }
+
+        ListItem() {
+          this.MineAboutCard()
         }
       }
       .width('100%')
@@ -1192,10 +1173,10 @@ struct Index {
   }
 
   @Builder
-  MineFontCard() {
+  MineQuickActionsCard() {
     Column() {
       Row() {
-        Text($r('app.string.font_style'))
+        Text('快捷操作')
           .fontSize(18)
           .fontWeight(FontWeight.Bold)
           .fontColor($r('app.color.colorText1'))
@@ -1205,10 +1186,99 @@ struct Index {
       .width('100%')
       .margin({ bottom: 16 })
 
-      this.FontStyleOptions()
+      Row({ space: 12 }) {
+        // 复制今日一言
+        Column() {
+          Text('📝')
+            .fontSize(28)
+            .margin({ bottom: 8 })
+
+          Text('复制一言')
+            .fontSize(13)
+            .fontWeight(FontWeight.Medium)
+            .fontColor($r('app.color.colorText2'))
+        }
+        .layoutWeight(1)
+        .height(80)
+        .justifyContent(FlexAlign.Center)
+        .alignItems(HorizontalAlign.Center)
+        .borderRadius(16)
+        .backgroundColor(this.getGlassControlColor())
+        .border({ width: 1, color: this.getGlassCardBorder() })
+        .onClick(async () => {
+          if (this.oneText.text.length > 0) {
+            const pasteboardData = pasteboard.createData(pasteboard.MIMETYPE_TEXT_PLAIN, this.oneText.text);
+            const systemPasteboard = pasteboard.getSystemPasteboard();
+            await systemPasteboard.setData(pasteboardData);
+            this.showToast('已复制到剪贴板');
+          }
+        })
+
+        // 分享一言
+        Column() {
+          Text('📤')
+            .fontSize(28)
+            .margin({ bottom: 8 })
+
+          Text('分享一言')
+            .fontSize(13)
+            .fontWeight(FontWeight.Medium)
+            .fontColor($r('app.color.colorText2'))
+        }
+        .layoutWeight(1)
+        .height(80)
+        .justifyContent(FlexAlign.Center)
+        .alignItems(HorizontalAlign.Center)
+        .borderRadius(16)
+        .backgroundColor(this.getGlassControlColor())
+        .border({ width: 1, color: this.getGlassCardBorder() })
+        .onClick(async () => {
+          if (this.oneText.text.length > 0) {
+            try {
+              const record: systemShare.SharedRecord = {
+                utd: uniformTypeDescriptor.UniformDataType.PLAIN_TEXT,
+                content: `${this.oneText.text}\n——${this.oneText.by}`,
+                title: 'Hitokoto',
+                description: this.oneText.from
+              };
+              const shareData = new systemShare.SharedData(record);
+              const controller = new systemShare.ShareController(shareData);
+              await controller.show(this.context, {
+                previewMode: systemShare.SharePreviewMode.DEFAULT
+              });
+            } catch (e) {
+              console.error('Index', `Share error: ${JSON.stringify(e)}`);
+              this.showToast('分享失败');
+            }
+          }
+        })
+
+        // 保存截图
+        Column() {
+          Text('📸')
+            .fontSize(28)
+            .margin({ bottom: 8 })
+
+          Text('保存截图')
+            .fontSize(13)
+            .fontWeight(FontWeight.Medium)
+            .fontColor($r('app.color.colorText2'))
+        }
+        .layoutWeight(1)
+        .height(80)
+        .justifyContent(FlexAlign.Center)
+        .alignItems(HorizontalAlign.Center)
+        .borderRadius(16)
+        .backgroundColor(this.getGlassControlColor())
+        .border({ width: 1, color: this.getGlassCardBorder() })
+        .onClick(async () => {
+          await this.saveScreenshot();
+        })
+      }
+      .width('100%')
     }
     .width('100%')
-    .padding({ left: 18, right: 18, top: 20, bottom: 16 })
+    .padding({ left: 18, right: 18, top: 20, bottom: 20 })
     .backgroundColor(this.getGlassCardColor())
     .backgroundBlurStyle(BlurStyle.BACKGROUND_THIN)
     .backdropBlur(18)
@@ -1245,59 +1315,29 @@ struct Index {
   }
 
   @Builder
-  FontStyleOptions() {
-    Scroll() {
-      Row({ space: 14 }) {
-        ForEach(this.fontStyles, (name: string, index: number) => {
-          Row() {
-            Text(this.fontSamples[index])
-              .fontSize(58)
-              .fontFamily(this.fontFamilies[index])
-              .fontWeight(FontWeight.Medium)
-              .fontColor(this.fontStyleIndex === index ? $r('app.color.colorPrimary') : $r('app.color.colorText2'))
-              .width(74)
-              .textAlign(TextAlign.Center)
+  MineAboutCard() {
+    Column() {
+      this.MineSettingRow('关于一言', '版本 2.0.0 · 查看应用信息', () => {
+        this.navPathStack.pushPathByName('AboutPage', null);
+      })
 
-            Column() {
-              Text(name)
-                .fontSize(17)
-                .fontWeight(this.fontStyleIndex === index ? FontWeight.Bold : FontWeight.Medium)
-                .fontColor($r('app.color.colorText1'))
+      Divider()
+        .strokeWidth(1)
+        .color(this.getGlassCardBorder())
+        .margin({ left: 18, right: 18 })
 
-              Text(this.fontDescriptions[index])
-                .fontSize(12)
-                .fontColor($r('app.color.colorText4'))
-                .margin({ top: 6 })
-
-              if (this.fontStyleIndex === index) {
-                Text('当前使用')
-                  .fontSize(11)
-                  .fontColor($r('app.color.colorPrimary'))
-                  .margin({ top: 12 })
-              }
-            }
-            .alignItems(HorizontalAlign.Start)
-            .layoutWeight(1)
-          }
-          .width(226)
-          .height(112)
-          .padding({ left: 14, right: 14, top: 14, bottom: 14 })
-          .borderRadius(18)
-          .backgroundColor(this.fontStyleIndex === index ? this.getGlassSelectedColor() : this.getGlassControlColor())
-          .border({ width: 1, color: this.fontStyleIndex === index ? '#662F6BFF' : this.getGlassCardBorder() })
-          .shadow({ radius: this.fontStyleIndex === index ? 12 : 0, color: this.getGlassShadowColor(), offsetX: 0, offsetY: 5 })
-          .onClick(async () => {
-            this.fontStyleIndex = index;
-            await this.prefs.putNumber('onetext_font_style', index);
-          })
-        }, (name: string, index: number) => `${index}-${name}`)
-      }
-      .padding({ left: 0, right: 20 })
+      this.MineSettingRow('开源协议', 'LGPL v3 · 自由开源', () => {
+        this.openExternalLink('https://github.com/lisansas/OneText_For_Harmonry/blob/main/LICENSE');
+      })
     }
     .width('100%')
-    .height(120)
-    .scrollable(ScrollDirection.Horizontal)
-    .scrollBar(BarState.Off)
+    .margin({ top: MINE_SETTINGS_CARD_TOP })
+    .backgroundColor(this.getGlassCardColor())
+    .backgroundBlurStyle(BlurStyle.BACKGROUND_THIN)
+    .backdropBlur(18)
+    .border({ width: 1, color: this.getGlassCardBorder() })
+    .borderRadius(UiStyle.CARD_RADIUS)
+    .shadow({ radius: 16, color: this.getGlassShadowColor(), offsetX: 0, offsetY: 4 })
   }
 
   @Builder
